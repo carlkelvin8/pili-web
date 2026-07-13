@@ -111,12 +111,15 @@ export default function Contact() {
                   placeholder="Tell us about your bonding requirements..."
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full py-3.5 bg-[var(--color-accent)] text-white font-semibold rounded-lg hover:bg-[var(--color-primary)] transition-colors"
+              <a
+                href="/messages"
+                className="block w-full py-3.5 bg-[var(--color-accent)] text-white font-semibold rounded-lg hover:bg-[var(--color-primary)] transition-colors text-center"
               >
                 Send Inquiry
-              </button>
+              </a>
+              <p className="text-xs text-gray-400 text-center">
+                You&apos;ll be taken to our messaging portal
+              </p>
             </form>
           </div>
         </div>

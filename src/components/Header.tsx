@@ -13,6 +13,7 @@ export default function Header() {
     { label: "Industries", href: "#industries" },
     { label: "Why Us", href: "#why-us" },
     { label: "Contact", href: "#contact" },
+    { label: "Messages", href: "/messages" },
   ];
 
   return (
@@ -72,6 +73,7 @@ export default function Header() {
                 href={link.href}
                 className="block py-3 px-2 text-sm font-medium text-gray-700 hover:text-[var(--color-accent)] hover:bg-gray-50 rounded"
                 onClick={() => setMenuOpen(false)}
+                target={link.href.startsWith("/") ? "_self" : undefined}
               >
                 {link.label}
               </a>
