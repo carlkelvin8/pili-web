@@ -281,6 +281,58 @@ const SECTION_LABELS: Record<string, string> = {
   hero: "Hero", about: "About", products: "Products", news: "News", contact: "Contact", footer: "Footer",
 };
 
+function validateSection(section: string, data: CmsData): string {
+  switch (section) {
+    case "hero":
+      if (!data.heading || !(data.heading as string).trim()) return "Hero heading is required.";
+      if (!data.subheading || !(data.subheading as string).trim()) return "Hero subheading is required.";
+      break;
+    case "about":
+      if (!data.heading || !(data.heading as string).trim()) return "About section heading is required.";
+      if (!data.visionText || !(data.visionText as string).trim()) return "Vision description is required.";
+      if (!data.missionText || !(data.missionText as string).trim()) return "Mission description is required.";
+      break;
+    case "products": {
+      if (!data.sectionHeading || !(data.sectionHeading as string).trim()) return "Products section heading is required.";
+      const items = data.items as Record<string, string>[] | undefined;
+      if (!items || items.length === 0) return "Please add at least one product.";
+      for (let i = 0; i < items.length; i++) {
+        if (!items[i].name?.trim()) return `Product #${i + 1}: name is required.`;
+        if (!items[i].tagline?.trim()) return `Product #${i + 1}: tagline is required.`;
+        if (!items[i].description?.trim()) return `Product #${i + 1}: description is required.`;
+      }
+      break;
+    }
+    case "news": {
+      const items = data.items as Record<string, string>[] | undefined;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (!items[i].title?.trim()) return `News item #${i + 1}: title is required.`;
+          if (!items[i].url?.trim()) return `News item #${i + 1}: URL is required.`;
+          else if (!items[i].url.startsWith("http")) return `News item #${i + 1}: URL must start with http:// or https://`;
+        }
+      }
+      break;
+    }
+    case "contact":
+      if (data.linkedin && !(data.linkedin as string).startsWith("http")) return "LinkedIn URL must start with http:// or https://";
+      if (data.facebook && !(data.facebook as string).startsWith("http")) return "Facebook URL must start with http:// or https://";
+      if (data.instagram && !(data.instagram as string).startsWith("http")) return "Instagram URL must start with http:// or https://";
+      break;
+    case "footer": {
+      const links = data.quickLinks as Record<string, string>[] | undefined;
+      if (links) {
+        for (let i = 0; i < links.length; i++) {
+          if (!links[i].label?.trim()) return `Quick link #${i + 1}: label is required.`;
+          if (!links[i].href?.trim()) return `Quick link #${i + 1}: link URL is required.`;
+        }
+      }
+      break;
+    }
+  }
+  return "";
+}
+
 export default function CmsPage() {
   const [activeTab, setActiveTab] = useState<string>("hero");
   const [content, setContent] = useState<Record<string, CmsData>>({});
@@ -311,20 +363,29 @@ export default function CmsPage() {
   const handleSave = useCallback(async () => {
     setSaving(true);
     setMessage("");
+
+    const d = content[activeTab] || {};
+    const validationError = validateSection(activeTab, d);
+    if (validationError) {
+      setMessage(validationError);
+      setSaving(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/cms", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: activeTab, content: content[activeTab] }),
+        body: JSON.stringify({ section: activeTab, content: d }),
       });
       if (res.ok) {
         setMessage("Saved successfully!");
       } else {
         const err = await res.json();
-        setMessage(err.error || "Failed to save");
+        setMessage(err.error || "We couldn't save your changes. Please try again.");
       }
     } catch {
-      setMessage("Network error");
+      setMessage("Unable to connect. Please check your internet and try again.");
     }
     setSaving(false);
   }, [activeTab, content]);
@@ -367,10 +428,15 @@ export default function CmsPage() {
       </div>
 
       {message && (
-        <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${
-          message.includes("success") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+        <div className={`mb-4 flex items-start gap-3 px-4 py-3 rounded-lg text-sm border ${
+          message.includes("success") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
         }`}>
-          {message}
+          {message.includes("success") ? (
+            <svg className="w-5 h-5 text-green-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          ) : (
+            <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+          )}
+          <span>{message}</span>
         </div>
       )}
 

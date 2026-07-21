@@ -26,6 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -39,17 +40,40 @@ export default function AnalyticsPage() {
         if (res.ok) {
           const analytics = await res.json();
           setData(analytics);
+        } else {
+          setError("We couldn't load your analytics data. Please try refreshing the page.");
         }
-      } catch {}
+      } catch {
+        setError("Unable to load analytics. Please check your internet connection and try again.");
+      }
       setLoading(false);
     };
     fetchAnalytics();
   }, [router]);
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="p-6">
-        <div className="text-gray-400 text-sm">Loading analytics...</div>
+        <div className="flex items-center gap-3 text-gray-400 text-sm">
+          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+          Loading analytics...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="p-6">
+        <div className="flex items-start gap-3 bg-red-50 text-red-700 text-sm rounded-lg px-4 py-3 border border-red-200">
+          <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <div>
+            <p className="font-medium">Something went wrong</p>
+            <p className="mt-1">{error || "We couldn't load the analytics data. Please try again later."}</p>
+          </div>
+        </div>
       </div>
     );
   }
