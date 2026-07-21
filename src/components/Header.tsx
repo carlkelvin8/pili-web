@@ -12,7 +12,6 @@ export default function Header() {
     { label: "Products", href: "#products" },
     { label: "News", href: "#news" },
     { label: "Contacts", href: "#contact" },
-    { label: "Messages", href: "/messages" },
   ];
 
   return (

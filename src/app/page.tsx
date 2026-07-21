@@ -7,6 +7,7 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
 import ScrollReveal from "@/components/ScrollReveal";
+import FloatingChat from "@/components/FloatingChat";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <News />
       <Contact />
       <Footer />
+      <FloatingChat />
     </main>
   );
 }
