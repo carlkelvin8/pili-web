@@ -8,19 +8,22 @@ import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
 import ScrollReveal from "@/components/ScrollReveal";
 import FloatingChat from "@/components/FloatingChat";
+import { getAllCmsContent } from "@/lib/cms";
 
-export default function Home() {
+export default async function Home() {
+  const cms = await getAllCmsContent();
+
   return (
     <main>
       <CustomCursor />
       <ScrollReveal />
       <Header />
-      <Hero />
-      <About />
-      <Products />
-      <News />
-      <Contact />
-      <Footer />
+      <Hero data={cms.hero} />
+      <About data={cms.about} />
+      <Products data={cms.products} />
+      <News data={cms.news} />
+      <Contact data={cms.contact} />
+      <Footer data={cms.footer} />
       <FloatingChat />
     </main>
   );

@@ -51,3 +51,9 @@ model Message {
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
 }
+
+model PageContent {
+  section String @id
+  content Json
+  updatedAt DateTime @updatedAt
+}

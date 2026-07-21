@@ -33,27 +33,10 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protect admin routes
-  if (request.nextUrl.pathname.startsWith("/admin")) {
-    if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
-    }
-
-    // Check if user is admin via our User table
-    const { PrismaClient } = await import("@prisma/client");
-    const prisma = new PrismaClient();
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-    });
-    await prisma.$disconnect();
-
-    if (!dbUser || dbUser.role !== "ADMIN") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
-    }
+  if (request.nextUrl.pathname.startsWith("/admin") && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
