@@ -33,9 +33,14 @@ export default function AdminMessagesPage() {
   }, []);
 
   const fetchUnreadCount = useCallback(async () => {
-    const res = await fetch("/api/conversations/unread");
-    const data = await res.json();
-    setTotalUnread(data.count);
+    try {
+      const res = await fetch("/api/conversations/unread", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTotalUnread(typeof data.count === "number" ? data.count : 0);
+    } catch {
+      // silent — not critical
+    }
   }, []);
 
   useEffect(() => {
@@ -62,9 +67,13 @@ export default function AdminMessagesPage() {
           setRefreshKey((k) => k + 1);
 
           if ("Notification" in window && Notification.permission === "granted") {
-            fetch("/api/conversations")
-              .then((res) => res.json())
+            fetch("/api/conversations", { credentials: "same-origin" })
+              .then((res) => {
+                if (!res.ok) return [];
+                return res.json();
+              })
               .then((conversations) => {
+                if (!Array.isArray(conversations)) return;
                 const conv = conversations.find(
                   (c: Record<string, unknown>) =>
                     Array.isArray(c.messages) && c.messages.length > 0
@@ -90,15 +99,21 @@ export default function AdminMessagesPage() {
   }, [fetchUnreadCount]);
 
   const fetchConversationInfo = useCallback(async (id: string) => {
-    const res = await fetch("/api/conversations");
-    const data = await res.json();
-    const conv = data.find((c: { id: string }) => c.id === id);
-    if (conv) {
-      setConversationInfo({
-        subject: conv.subject,
-        status: conv.status,
-        customer: conv.customer,
-      });
+    try {
+      const res = await fetch("/api/conversations", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!Array.isArray(data)) return;
+      const conv = data.find((c: { id: string }) => c.id === id);
+      if (conv) {
+        setConversationInfo({
+          subject: conv.subject,
+          status: conv.status,
+          customer: conv.customer,
+        });
+      }
+    } catch {
+      // silent
     }
   }, []);
 
@@ -109,14 +124,19 @@ export default function AdminMessagesPage() {
 
   async function handleStatusChange(status: string) {
     if (!selectedId) return;
-    await fetch("/api/conversations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: selectedId, status }),
-    });
-    fetchConversationInfo(selectedId);
-    setRefreshKey((k) => k + 1);
-    fetchUnreadCount();
+    try {
+      await fetch("/api/conversations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ id: selectedId, status }),
+      });
+      fetchConversationInfo(selectedId);
+      setRefreshKey((k) => k + 1);
+      fetchUnreadCount();
+    } catch {
+      // silent
+    }
   }
 
   async function handleLogout() {

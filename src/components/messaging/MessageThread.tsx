@@ -30,15 +30,31 @@ export default function MessageThread({
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabaseRef = useRef(createClient());
 
   const fetchMessages = useCallback(async () => {
-    const res = await fetch(
-      `/api/messages?conversationId=${conversationId}`
-    );
-    const data = await res.json();
-    setMessages(data);
+    try {
+      setLoadError("");
+      const res = await fetch(
+        `/api/messages?conversationId=${conversationId}`,
+        { credentials: "same-origin" }
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to load messages");
+      }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Unexpected response from server.");
+      }
+      setMessages(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unable to load messages. Please try again.";
+      setLoadError(msg);
+      setMessages([]);
+    }
   }, [conversationId]);
 
   useEffect(() => {
@@ -129,7 +145,16 @@ export default function MessageThread({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {groupedMessages.map((group) => (
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-3">
+            <p className="text-sm text-red-500">{loadError}</p>
+            <button onClick={fetchMessages} className="text-sm text-[#3ecbac] hover:text-[#0d4d4d] font-medium">Try again</button>
+          </div>
+        ) : groupedMessages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            No messages yet
+          </div>
+        ) : groupedMessages.map((group) => (
           <div key={group.date}>
             <div className="flex items-center justify-center my-4">
               <span className="text-[10px] text-gray-400 bg-white px-3 py-1 rounded-full border border-gray-200">

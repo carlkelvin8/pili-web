@@ -32,16 +32,34 @@ export default function ConversationList({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const supabaseRef = useRef(createClient());
 
   const fetchConversations = useCallback(async () => {
-    const res = await fetch("/api/conversations");
-    const data = await res.json();
-    setConversations(data);
+    try {
+      setLoading(true);
+      setError("");
+      const res = await fetch("/api/conversations", { credentials: "same-origin" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to load conversations");
+      }
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Unexpected response from server. Please try again.");
+      }
+      setConversations(data);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unable to load conversations. Please try again.";
+      setError(msg);
+      setConversations([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchConversations();
   }, [refreshKey, fetchConversations]);
 
@@ -125,7 +143,17 @@ export default function ConversationList({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center p-8 text-gray-400 text-sm gap-2">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            Loading conversations...
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center space-y-3">
+            <p className="text-sm text-red-500">{error}</p>
+            <button onClick={fetchConversations} className="text-sm text-[#3ecbac] hover:text-[#0d4d4d] font-medium">Try again</button>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="p-8 text-center text-gray-400 text-sm">
             No conversations found
           </div>
