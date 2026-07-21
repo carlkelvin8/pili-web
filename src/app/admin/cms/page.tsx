@@ -133,6 +133,79 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+function ImageUploadField({
+  value, onChange, label, folder,
+}: {
+  value: string; onChange: (v: string) => void; label: string; folder?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    if (folder) fd.append("folder", folder);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        onChange(data.url);
+      } else {
+        const err = await res.json();
+        setError(err.error || "Upload failed. Please try again.");
+      }
+    } catch {
+      setError("Unable to upload. Please check your connection.");
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">📷 {label}</label>
+      <div className="flex items-center gap-3">
+        {value ? (
+          <div className="relative w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden shrink-0 group">
+            <img src={value} alt="" className="w-full h-full object-contain p-1" />
+            <button
+              onClick={() => { onChange(""); setError(""); }}
+              className="absolute top-0.5 right-0.5 bg-white/80 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <svg className="w-3 h-3 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        ) : (
+          <div className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center shrink-0">
+            {uploading ? (
+              <svg className="animate-spin h-5 w-5 text-gray-400" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+            ) : (
+              <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V5.25a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v14.25a1.5 1.5 0 001.5 1.5z" /></svg>
+            )}
+          </div>
+        )}
+        <div className="flex-1 space-y-1">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="text-sm font-medium text-[#0d4d4d] hover:text-[#1a8a6e] border border-gray-200 hover:border-[#3ecbac] px-3 py-1.5 rounded-lg transition-all disabled:opacity-40"
+          >
+            {uploading ? "Uploading..." : value ? "Replace Image" : "Choose Image"}
+          </button>
+          <p className="text-[10px] text-gray-400">PNG, JPG, WebP, SVG — max 5 MB</p>
+          {error && <p className="text-[11px] text-red-500">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DragHandle() {
   return (
     <svg className="w-4 h-4 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing" fill="currentColor" viewBox="0 0 24 24">
@@ -260,12 +333,12 @@ function ProductsEditor({ data, onChange }: { data: CmsData; onChange: (d: CmsDa
                   <InputField label="Tagline" value={product.tagline || ""} onChange={(v) => { const next = [...items]; next[i] = { ...next[i], tagline: v }; set("items", next); }} required placeholder="Engineered for Stronger Bonds." />
                 </div>
                 <TextareaField label="Description" value={product.description || ""} onChange={(v) => { const next = [...items]; next[i] = { ...next[i], description: v }; set("items", next); }} placeholder="Product description..." rows={2} />
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <InputField label="Image Path" value={product.image || ""} onChange={(v) => { const next = [...items]; next[i] = { ...next[i], image: v }; set("items", next); }} placeholder="/products/pili-adhesive.svg" hint="Path to image in /public folder" />
-                  </div>
-                  <ImagePreview src={product.image || ""} alt={product.name || "Product"} />
-                </div>
+                <ImageUploadField
+                  value={product.image || ""}
+                  onChange={(v) => { const next = [...items]; next[i] = { ...next[i], image: v }; set("items", next); }}
+                  label="Product Image"
+                  folder={`products/${i}`}
+                />
               </div>
               <button onClick={() => set("items", items.filter((_, idx) => idx !== i))} className="text-gray-400 hover:text-red-500 p-2 transition-colors mt-4">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
