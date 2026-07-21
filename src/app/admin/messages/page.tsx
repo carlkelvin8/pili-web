@@ -66,12 +66,14 @@ export default function AdminMessagesPage() {
               .then((res) => res.json())
               .then((conversations) => {
                 const conv = conversations.find(
-                  (c: { id: string }) =>
-                    c.messages?.[0] !== undefined
+                  (c: Record<string, unknown>) =>
+                    Array.isArray(c.messages) && c.messages.length > 0
                 );
                 if (conv) {
+                  const lastMsg = conv.messages[conv.messages.length - 1] as Record<string, unknown>;
+                  const customer = conv.customer as Record<string, unknown> | undefined;
                   new Notification("New message received", {
-                    body: conv.customer?.name + ": " + (conv.messages?.[0]?.content || "New message"),
+                    body: ((customer?.name as string) || "Customer") + ": " + ((lastMsg?.content as string) || "New message"),
                     icon: "/logo.png",
                   });
                 }
