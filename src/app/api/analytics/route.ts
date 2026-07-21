@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -13,7 +13,14 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const startDateParam = searchParams.get("start");
+    const endDateParam = searchParams.get("end");
+
     const now = new Date();
+    const endDate = endDateParam ? new Date(endDateParam) : now;
+    const startDate = startDateParam ? new Date(startDateParam) : new Date(now.getFullYear() - 1, now.getMonth(), 1);
+
     const twelveMonthsAgo = new Date(now.getFullYear() - 1, now.getMonth(), 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
@@ -202,6 +209,28 @@ export async function GET() {
     const peakHourIdx = hourCounts.indexOf(Math.max(...hourCounts));
     const peakHour = `${peakHourIdx}:00–${peakHourIdx + 1}:00`;
 
+    // Response time tracking: avg time to first admin reply
+    let totalResponseTimeMs = 0;
+    let conversationsWithResponse = 0;
+    for (const conv of allConversations) {
+      const customerMsgs = conv.messages.filter((m) => m.sender.role === "CUSTOMER");
+      const adminMsgs = conv.messages.filter((m) => m.sender.role === "ADMIN");
+      if (customerMsgs.length > 0 && adminMsgs.length > 0) {
+        const firstCustomerMsg = customerMsgs[0];
+        const firstAdminReply = adminMsgs[0];
+        if (firstAdminReply.createdAt > firstCustomerMsg.createdAt) {
+          totalResponseTimeMs += firstAdminReply.createdAt.getTime() - firstCustomerMsg.createdAt.getTime();
+          conversationsWithResponse++;
+        }
+      }
+    }
+    const avgResponseTimeMinutes = conversationsWithResponse > 0
+      ? Math.round(totalResponseTimeMs / conversationsWithResponse / 60000)
+      : 0;
+    const responseTimeFormatted = avgResponseTimeMinutes < 60
+      ? `${avgResponseTimeMinutes}m`
+      : `${Math.floor(avgResponseTimeMinutes / 60)}h ${avgResponseTimeMinutes % 60}m`;
+
     return NextResponse.json({
       totalConversations,
       totalMessages,
@@ -228,6 +257,9 @@ export async function GET() {
       recentActivity,
       conversionRate,
       peakHour,
+      avgResponseTimeMinutes,
+      responseTimeFormatted,
+      conversationsWithResponse,
     });
   } catch {
     return NextResponse.json(

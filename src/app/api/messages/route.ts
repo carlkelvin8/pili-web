@@ -41,11 +41,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, conversationId, senderEmail, senderRole } = body;
+    const { content, conversationId, senderEmail, senderRole, attachmentUrl, attachmentName } = body;
 
-    if (!content || !content.trim()) {
+    if (!content?.trim() && !attachmentUrl) {
       return NextResponse.json(
-        { error: "Please type a message before sending." },
+        { error: "Please type a message or attach a file." },
         { status: 400 }
       );
     }
@@ -77,7 +77,12 @@ export async function POST(request: NextRequest) {
     }
 
     const message = await prisma.message.create({
-      data: { content: content.trim(), conversationId, senderId: sender.id },
+      data: {
+        content: content?.trim() || "",
+        conversationId,
+        senderId: sender.id,
+        ...(attachmentUrl && { attachmentUrl, attachmentName: attachmentName || null }),
+      },
       include: {
         sender: { select: { id: true, name: true, email: true, role: true } },
         reactions: {

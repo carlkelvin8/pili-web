@@ -17,6 +17,8 @@ interface Message {
   editedAt?: string;
   sender: { name: string; email: string; role: string };
   reactions: Reaction[];
+  attachmentUrl?: string;
+  attachmentName?: string;
 }
 
 interface Conversation {
@@ -72,6 +74,15 @@ export default function FloatingChat() {
   const [reactionPicker, setReactionPicker] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
+  // File attachment
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator
+  const [adminTyping, setAdminTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
   useEffect(() => {
     const saved = localStorage.getItem("pili_customer");
     if (saved) {
@@ -123,6 +134,7 @@ export default function FloatingChat() {
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
+  // Supabase realtime + typing channel
   useEffect(() => {
     if (!selectedConvId) return;
     const sb = supabaseRef.current;
@@ -134,13 +146,22 @@ export default function FloatingChat() {
           if (prev.find((m) => m.id === newMsg.id)) return prev;
           return [...prev, { ...newMsg, reactions: [] }];
         });
+        setAdminTyping(false);
       })
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" }, () => {
         fetchMessages();
       })
+      .on("broadcast", { event: "typing" }, (payload) => {
+        const data = payload.payload as { email?: string; name?: string };
+        if (data.email && data.email !== email) {
+          setAdminTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setAdminTyping(false), 4000);
+        }
+      })
       .subscribe();
     return () => { sb.removeChannel(channel); };
-  }, [selectedConvId, fetchMessages]);
+  }, [selectedConvId, fetchMessages, email]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -160,17 +181,44 @@ export default function FloatingChat() {
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMessage.trim() || sending || !selectedConvId) return;
+    if ((!newMessage.trim() && !attachmentFile) || sending || !selectedConvId) return;
     setSending(true);
     setSendError("");
     const content = newMessage.trim();
     setNewMessage("");
+
+    let attachmentUrl = "";
+    let attachmentName = "";
+
+    if (attachmentFile) {
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", attachmentFile);
+        const uploadRes = await fetch("/api/chat/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          attachmentUrl = uploadData.url;
+          attachmentName = uploadData.name;
+        }
+      } catch { /* silent */ }
+      setUploading(false);
+      setAttachmentFile(null);
+    }
+
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ content, conversationId: selectedConvId, senderEmail: email, senderRole: "CUSTOMER" }),
+        body: JSON.stringify({
+          content,
+          conversationId: selectedConvId,
+          senderEmail: email,
+          senderRole: "CUSTOMER",
+          attachmentUrl: attachmentUrl || undefined,
+          attachmentName: attachmentName || undefined,
+        }),
       });
       if (res.ok) {
         const msg = await res.json();
@@ -434,14 +482,32 @@ export default function FloatingChat() {
                                 <button onClick={() => { setEditingId(null); setEditContent(""); }} className="text-[10px] text-white/60 shrink-0">Cancel</button>
                               </div>
                             ) : (
-                              <p className="text-sm leading-relaxed">{msg.content}</p>
+                              <>
+                                <p className="text-sm leading-relaxed">{msg.content}</p>
+                                {msg.attachmentUrl && (
+                                  <div className="mt-2">
+                                    {msg.attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                                      <img src={msg.attachmentUrl} alt={msg.attachmentName || "Attachment"} className="max-w-[180px] max-h-[120px] rounded-lg object-cover" />
+                                    ) : (
+                                      <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                                        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border ${
+                                          isOwn ? "bg-white/10 border-white/20 text-white hover:bg-white/20" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                                        }`}>
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                        </svg>
+                                        {msg.attachmentName || "File"}
+                                      </a>
+                                    )}
+                                  </div>
+                                )}
+                              </>
                             )}
                             <p className={`text-[10px] mt-1 ${isOwn ? "text-white/60" : "text-gray-400"}`}>
                               {formatTime(msg.createdAt)}
                               {msg.editedAt && " (edited)"}
                             </p>
                           </div>
-                          {/* Reactions */}
                           {grouped.length > 0 && (
                             <div className={`flex flex-wrap gap-1 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}>
                               {grouped.map((g) => {
@@ -471,6 +537,20 @@ export default function FloatingChat() {
                   </div>
                 );
               })}
+
+              {/* Typing indicator */}
+              {adminTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-2.5">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
 
@@ -516,11 +596,41 @@ export default function FloatingChat() {
                 <span>{sendError}</span>
               </div>
             )}
+
+            {/* Attachment preview */}
+            {attachmentFile && (
+              <div className="px-3 py-2 bg-white border-t border-gray-100 flex items-center gap-2">
+                <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 flex-1 min-w-0">
+                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <span className="truncate">{attachmentFile.name}</span>
+                  <button onClick={() => setAttachmentFile(null)} className="text-gray-400 hover:text-gray-600 shrink-0">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 bg-white shrink-0">
               <div className="flex gap-2">
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*,.pdf" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setAttachmentFile(file);
+                  e.target.value = "";
+                }} />
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                  className="p-2 text-gray-400 hover:text-[#0d4d4d] border border-gray-300 rounded-full transition-colors"
+                  title="Attach file">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                </button>
                 <input type="text" value={newMessage} onChange={(e) => { setNewMessage(e.target.value); setSendError(""); }} placeholder="Type a message..." className="flex-1 px-3 py-2 rounded-full border border-gray-300 text-sm focus:ring-2 focus:ring-[#3ecbac] focus:border-transparent outline-none" />
-                <button type="submit" disabled={!newMessage.trim() || sending} className="bg-[#0d4d4d] hover:bg-[#1a8a6e] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50">
-                  {sending ? "..." : "Send"}
+                <button type="submit" disabled={(!newMessage.trim() && !attachmentFile) || sending} className="bg-[#0d4d4d] hover:bg-[#1a8a6e] text-white px-4 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-50">
+                  {sending || uploading ? "..." : "Send"}
                 </button>
               </div>
             </form>

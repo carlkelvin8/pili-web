@@ -39,6 +39,8 @@ interface AnalyticsData {
   }[];
   conversionRate: number;
   peakHour: string;
+  avgResponseTimeMinutes: number;
+  responseTimeFormatted: string;
 }
 
 const STATUS_COLORS: Record<string, string> = { OPEN: "#22c55e", PENDING: "#eab308", CLOSED: "#9ca3af" };
@@ -81,11 +83,57 @@ function StatCard({ label, value, icon, trend, trendInvert, accent }: {
   );
 }
 
+function exportCSV(data: AnalyticsData) {
+  const rows: string[] = [];
+  rows.push("Metric,Value");
+  rows.push(`Total Conversations,${data.totalConversations}`);
+  rows.push(`Total Messages,${data.totalMessages}`);
+  rows.push(`Total Customers,${data.totalCustomers}`);
+  rows.push(`Unread Messages,${data.unreadMessages}`);
+  rows.push(`Response Rate,${data.responseRate}%`);
+  rows.push(`Avg Response Time,${data.responseTimeFormatted}`);
+  rows.push(`Avg Messages/Conv,${data.avgMessagesPerConv}`);
+  rows.push(`Conversion Rate,${data.conversionRate}%`);
+  rows.push(`Peak Hour,${data.peakHour}`);
+  rows.push("");
+  rows.push("Date,Messages");
+  for (const d of data.dailyMessages) {
+    rows.push(`${d.date},${d.count}`);
+  }
+  rows.push("");
+  rows.push("Day,Messages");
+  for (const d of data.dayOfWeekData) {
+    rows.push(`${d.day},${d.messages}`);
+  }
+  rows.push("");
+  rows.push("Hour,Messages");
+  for (const d of data.hourlyData) {
+    rows.push(`${d.hour},${d.messages}`);
+  }
+  rows.push("");
+  rows.push("Customer,Email,Messages");
+  for (const c of data.topCustomers) {
+    rows.push(`"${c.name}",${c.email},${c.count}`);
+  }
+
+  const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `pili-analytics-${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [period, setPeriod] = useState<"12m" | "6m" | "3m">("12m");
+  const [dateMode, setDateMode] = useState<"preset" | "custom">("preset");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [exporting, setExporting] = useState(false);
   const router = useRouter();
 
   const fetchAnalytics = useCallback(async () => {
@@ -94,7 +142,11 @@ export default function AnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      const res = await fetch("/api/analytics", { credentials: "same-origin" });
+      let url = "/api/analytics";
+      if (dateMode === "custom" && startDate && endDate) {
+        url += `?start=${startDate}&end=${endDate}`;
+      }
+      const res = await fetch(url, { credentials: "same-origin" });
       if (res.ok) {
         const analytics = await res.json();
         setData(analytics);
@@ -105,9 +157,16 @@ export default function AnalyticsPage() {
       setError("Unable to load analytics. Please check your internet connection and try again.");
     }
     setLoading(false);
-  }, [router]);
+  }, [router, dateMode, startDate, endDate]);
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+
+  const handleExport = () => {
+    if (!data) return;
+    setExporting(true);
+    exportCSV(data);
+    setTimeout(() => setExporting(false), 1000);
+  };
 
   if (loading) {
     return (
@@ -147,22 +206,54 @@ export default function AnalyticsPage() {
   return (
     <div className="p-6 space-y-6 max-w-[1400px]">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#0a2e2e] font-[family-name:var(--font-poppins)]">
             Analytics Dashboard
           </h1>
           <p className="text-sm text-gray-500 mt-1">Comprehensive overview of your site activity</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Date mode toggle */}
           <div className="flex bg-gray-100 rounded-lg p-0.5">
-            {([["3m", "3M"], ["6m", "6M"], ["12m", "12M"]] as const).map(([key, label]) => (
-              <button key={key} onClick={() => setPeriod(key)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${period === key ? "bg-white text-[#0a2e2e] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-                {label}
-              </button>
-            ))}
+            <button onClick={() => setDateMode("preset")}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${dateMode === "preset" ? "bg-white text-[#0a2e2e] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              Preset
+            </button>
+            <button onClick={() => setDateMode("custom")}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${dateMode === "custom" ? "bg-white text-[#0a2e2e] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              Custom
+            </button>
           </div>
+
+          {dateMode === "preset" ? (
+            <div className="flex bg-gray-100 rounded-lg p-0.5">
+              {([["3m", "3M"], ["6m", "6M"], ["12m", "12M"]] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setPeriod(key)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${period === key ? "bg-white text-[#0a2e2e] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                className="px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-light)]" />
+              <span className="text-xs text-gray-400">to</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                className="px-2 py-1 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-light)]" />
+            </div>
+          )}
+
+          {/* Export */}
+          <button onClick={handleExport} disabled={exporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            {exporting ? "Exported!" : "Export CSV"}
+          </button>
+
           <button onClick={fetchAnalytics} className="p-2 text-gray-400 hover:text-[#0d4d4d] border border-gray-200 rounded-lg transition-colors" title="Refresh">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
@@ -172,20 +263,24 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Inquiries" value={data.totalConversations} icon="💬" trend={data.conversationsTrend} />
         <StatCard label="Messages" value={data.totalMessages} icon="✉️" trend={data.messagesTrend} />
         <StatCard label="Customers" value={data.totalCustomers} icon="👥" trend={data.customersTrend} />
         <StatCard label="Unread" value={data.unreadMessages} icon={data.unreadMessages > 0 ? "🔔" : "✅"} trend={data.unreadTrend} trendInvert />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Response Rate" value={`${data.responseRate}%`} icon="⚡" />
+        <StatCard label="Avg Response" value={data.responseTimeFormatted} icon="⏱️" />
         <StatCard label="Avg Msgs/Conv" value={data.avgMessagesPerConv} icon="📊" />
+        <StatCard label="Conversion" value={`${data.conversionRate}%`} icon="🎯" />
       </div>
 
       {/* Quick stats strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {[
-          { label: "Conversion Rate", value: `${data.conversionRate}%`, desc: "Inquiries closed", color: "text-[#3ecbac]" },
-          { label: "Peak Activity", value: data.peakHour, desc: "Busiest hour (30d)", color: "text-blue-500" },
+          { label: "Peak Activity", value: data.peakHour, desc: "Busiest hour", color: "text-blue-500" },
           { label: "This Month", value: data.conversationsThisMonth, desc: "New inquiries", color: "text-purple-500" },
           { label: "New Customers", value: data.newCustomersThisMonth, desc: "This month", color: "text-orange-500" },
         ].map((s) => (
@@ -207,7 +302,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-sm font-semibold text-[#0a2e2e]">Inquiries & Messages Trend</h2>
-              <p className="text-[10px] text-gray-400 mt-0.5">Monthly overview for the past {period === "3m" ? "3" : period === "6m" ? "6" : "12"} months</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">Monthly overview</p>
             </div>
           </div>
           <div className="h-72">
@@ -355,8 +450,13 @@ export default function AnalyticsPage() {
 
       {/* Row 4: Recent Activity */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="text-sm font-semibold text-[#0a2e2e] mb-1">Recent Activity</h2>
-        <p className="text-[10px] text-gray-400 mb-4">Latest 20 messages across all conversations</p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-[#0a2e2e]">Recent Activity</h2>
+            <p className="text-[10px] text-gray-400 mt-0.5">Latest 20 messages across all conversations</p>
+          </div>
+          <a href="/admin/activity" className="text-xs font-medium text-[#0d4d4d] hover:text-[#0a2e2e] underline">View All</a>
+        </div>
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {data.recentActivity.map((msg) => (
             <div key={msg.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">

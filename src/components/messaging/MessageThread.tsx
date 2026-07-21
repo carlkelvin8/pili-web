@@ -17,6 +17,15 @@ interface Message {
   editedAt?: string;
   sender: { id: string; name: string; email: string; role: string };
   reactions: Reaction[];
+  attachmentUrl?: string;
+  attachmentName?: string;
+}
+
+interface QuickReply {
+  id: string;
+  shortcut: string;
+  label: string;
+  content: string;
 }
 
 interface Props {
@@ -56,6 +65,21 @@ export default function MessageThread({
   const [editContent, setEditContent] = useState("");
   const [reactionPicker, setReactionPicker] = useState<string | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  // Quick replies
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [quickReplySearch, setQuickReplySearch] = useState("");
+  const quickRepliesRef = useRef<HTMLDivElement>(null);
+
+  // File attachment
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator
+  const [isTyping, setIsTyping] = useState(false);
 
   const fetchMessages = useCallback(async () => {
     try {
@@ -78,34 +102,93 @@ export default function MessageThread({
     }
   }, [conversationId]);
 
+  const fetchQuickReplies = useCallback(async () => {
+    try {
+      const res = await fetch("/api/quick-replies", { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        setQuickReplies(data.quickReplies || []);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
+  useEffect(() => { fetchQuickReplies(); }, [fetchQuickReplies]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    function close() { setContextMenu(null); setReactionPicker(null); }
-    if (contextMenu || reactionPicker) {
+    function close(e: MouseEvent) {
+      if (quickRepliesRef.current && !quickRepliesRef.current.contains(e.target as Node)) {
+        setShowQuickReplies(false);
+      }
+      setContextMenu(null);
+      setReactionPicker(null);
+    }
+    if (contextMenu || reactionPicker || showQuickReplies) {
       window.addEventListener("click", close);
       return () => window.removeEventListener("click", close);
     }
-  }, [contextMenu, reactionPicker]);
+  }, [contextMenu, reactionPicker, showQuickReplies]);
 
   useEffect(() => {
     if (editingId && editInputRef.current) editInputRef.current.focus();
   }, [editingId]);
 
+  // Broadcast typing indicator
+  function handleTyping() {
+    if (!isTyping) {
+      setIsTyping(true);
+      fetch("/api/typing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, email: currentUserEmail, name: currentUserEmail.split("@")[0] }),
+      }).catch(() => {});
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+  }
+
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!newMessage.trim() || sending) return;
+    if ((!newMessage.trim() && !attachmentFile) || sending) return;
     setSending(true);
     const content = newMessage.trim();
     setNewMessage("");
+
+    let attachmentUrl = "";
+    let attachmentName = "";
+
+    // Upload attachment if present
+    if (attachmentFile) {
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", attachmentFile);
+        const uploadRes = await fetch("/api/chat/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          attachmentUrl = uploadData.url;
+          attachmentName = uploadData.name;
+        }
+      } catch { /* silent */ }
+      setUploading(false);
+      setAttachmentFile(null);
+    }
+
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ content, conversationId, senderEmail: currentUserEmail, senderRole: userRole }),
+        body: JSON.stringify({
+          content,
+          conversationId,
+          senderEmail: currentUserEmail,
+          senderRole: userRole,
+          attachmentUrl: attachmentUrl || undefined,
+          attachmentName: attachmentName || undefined,
+        }),
       });
       if (res.ok) {
         const msg = await res.json();
@@ -113,6 +196,7 @@ export default function MessageThread({
       }
     } catch { /* silent */ }
     setSending(false);
+    setIsTyping(false);
   }
 
   async function handleReaction(messageId: string, emoji: string) {
@@ -193,6 +277,12 @@ export default function MessageThread({
     setReactionPicker(reactionPicker === msg.id ? null : msg.id);
   }
 
+  function insertQuickReply(content: string) {
+    setNewMessage(content);
+    setShowQuickReplies(false);
+    setQuickReplySearch("");
+  }
+
   function formatTime(date: string) {
     return new Date(date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
   }
@@ -208,6 +298,11 @@ export default function MessageThread({
     if (last && last.date === date) last.messages.push(msg);
     else groupedMessages.push({ date, messages: [msg] });
   });
+
+  const filteredQuickReplies = quickReplies.filter((qr) =>
+    qr.shortcut.toLowerCase().includes(quickReplySearch.toLowerCase()) ||
+    qr.label.toLowerCase().includes(quickReplySearch.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col h-full relative">
@@ -227,7 +322,6 @@ export default function MessageThread({
             {group.messages.map((msg) => {
               const isOwn = (userRole === "ADMIN" && msg.sender.role === "ADMIN") || (userRole === "CUSTOMER" && msg.sender.email === currentUserEmail);
               const isDeleted = msg.isDeleted;
-              const canAct = !isDeleted && canEditUnsend(msg.createdAt) && msg.sender.email === currentUserEmail;
               const grouped = groupReactions(msg.reactions);
 
               return (
@@ -238,7 +332,6 @@ export default function MessageThread({
                   onDoubleClick={() => !isDeleted && handleDoubleClick(msg)}
                 >
                   <div className={`max-w-[75%] group relative ${isOwn ? "items-end" : "items-start"}`}>
-                    {/* Message bubble */}
                     {!isDeleted ? (
                       <div
                         className={`rounded-2xl px-4 py-2.5 relative ${
@@ -268,7 +361,26 @@ export default function MessageThread({
                             <button onClick={() => { setEditingId(null); setEditContent(""); }} className="text-[10px] text-white/60 hover:underline">Cancel</button>
                           </div>
                         ) : (
-                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                          <>
+                            <p className="text-sm leading-relaxed">{msg.content}</p>
+                            {msg.attachmentUrl && (
+                              <div className="mt-2">
+                                {msg.attachmentUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                                  <img src={msg.attachmentUrl} alt={msg.attachmentName || "Attachment"} className="max-w-[200px] max-h-[150px] rounded-lg object-cover" />
+                                ) : (
+                                  <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border ${
+                                      isOwn ? "bg-white/10 border-white/20 text-white hover:bg-white/20" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                                    }`}>
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                    {msg.attachmentName || "File"}
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
 
                         <div className="flex items-center gap-1.5 mt-1">
@@ -284,7 +396,6 @@ export default function MessageThread({
                       </div>
                     )}
 
-                    {/* Reactions display */}
                     {grouped.length > 0 && !isDeleted && (
                       <div className={`flex flex-wrap gap-1 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}>
                         {grouped.map((g) => {
@@ -394,22 +505,123 @@ export default function MessageThread({
         </div>
       )}
 
+      {/* Attachment preview */}
+      {attachmentFile && (
+        <div className="px-4 py-2 bg-white border-t border-gray-100 flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 flex-1 min-w-0">
+            <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            <span className="truncate">{attachmentFile.name}</span>
+            <button onClick={() => setAttachmentFile(null)} className="text-gray-400 hover:text-gray-600 shrink-0">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Replies Panel */}
+      {showQuickReplies && (
+        <div ref={quickRepliesRef} className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-gray-200 max-h-[200px] overflow-hidden z-40">
+          <div className="p-2 border-b border-gray-100">
+            <input
+              type="text"
+              value={quickReplySearch}
+              onChange={(e) => setQuickReplySearch(e.target.value)}
+              placeholder="Search quick replies..."
+              className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-light)]"
+              autoFocus
+            />
+          </div>
+          <div className="overflow-y-auto max-h-[160px]">
+            {filteredQuickReplies.length === 0 ? (
+              <div className="p-4 text-center text-xs text-gray-400">
+                {quickReplies.length === 0 ? "No quick replies yet. Create them in CMS or via API." : "No matches found."}
+              </div>
+            ) : (
+              filteredQuickReplies.map((qr) => (
+                <button
+                  key={qr.id}
+                  onClick={() => insertQuickReply(qr.content)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors flex items-center gap-3"
+                >
+                  <span className="text-xs font-mono text-[#3ecbac] font-semibold bg-[#3ecbac]/10 px-2 py-0.5 rounded">/{qr.shortcut}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-[#0a2e2e] truncate">{qr.label}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{qr.content}</p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSend} className="p-4 border-t border-gray-200 bg-white">
         <div className="flex gap-2">
           <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*,.pdf,.doc,.docx"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) setAttachmentFile(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2.5 text-gray-400 hover:text-[#0d4d4d] border border-gray-300 rounded-full transition-colors"
+            title="Attach file"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.939A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowQuickReplies(!showQuickReplies)}
+            className={`p-2.5 border border-gray-300 rounded-full transition-colors ${showQuickReplies ? "bg-[#0d4d4d] text-white" : "text-gray-400 hover:text-[#0d4d4d]"}`}
+            title="Quick replies"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+          </button>
+          <input
             type="text"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+              // Auto-detect quick reply shortcut
+              const text = e.target.value;
+              if (text.startsWith("/")) {
+                const shortcut = text.slice(1);
+                const match = quickReplies.find((qr) => qr.shortcut === shortcut);
+                if (match) {
+                  setNewMessage(match.content);
+                  setShowQuickReplies(false);
+                  return;
+                }
+                if (!showQuickReplies) setShowQuickReplies(true);
+                setQuickReplySearch(shortcut);
+              }
+            }}
+            placeholder="Type a message... (use / for quick replies)"
             className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 text-sm focus:ring-2 focus:ring-[#3ecbac] focus:border-transparent outline-none"
           />
           <button
             type="submit"
-            disabled={!newMessage.trim() || sending}
+            disabled={(!newMessage.trim() && !attachmentFile) || sending}
             className="bg-[#0d4d4d] hover:bg-[#1a8a6e] text-white px-5 py-2.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {sending ? "..." : "Send"}
+            {sending || uploading ? "..." : "Send"}
           </button>
         </div>
       </form>
