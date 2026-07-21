@@ -3,11 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+interface Reaction {
+  id: string;
+  emoji: string;
+  user: { id: string; name: string; email: string };
+}
+
 interface Message {
   id: string;
   content: string;
   createdAt: string;
+  isDeleted?: boolean;
+  editedAt?: string;
   sender: { name: string; email: string; role: string };
+  reactions: Reaction[];
 }
 
 interface Conversation {
@@ -19,6 +28,22 @@ interface Conversation {
 }
 
 type View = "bubble" | "info" | "list" | "chat";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+function canEditUnsend(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < 5 * 60 * 1000;
+}
+
+function groupReactions(reactions: Reaction[]) {
+  const map: Record<string, { emoji: string; count: number; users: string[]; hasOwn: boolean }> = {};
+  for (const r of reactions) {
+    if (!map[r.emoji]) map[r.emoji] = { emoji: r.emoji, count: 0, users: [], hasOwn: false };
+    map[r.emoji].count++;
+    map[r.emoji].users.push(r.user.name || r.user.email.split("@")[0]);
+  }
+  return Object.values(map);
+}
 
 export default function FloatingChat() {
   const [view, setView] = useState<View>("bubble");
@@ -41,6 +66,11 @@ export default function FloatingChat() {
   const [showNewForm, setShowNewForm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabaseRef = useRef(createClient());
+  const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [reactionPicker, setReactionPicker] = useState<string | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("pili_customer");
@@ -51,13 +81,25 @@ export default function FloatingChat() {
     }
   }, []);
 
+  useEffect(() => {
+    function close() { setContextMenu(null); setReactionPicker(null); }
+    if (contextMenu || reactionPicker) {
+      window.addEventListener("click", close);
+      return () => window.removeEventListener("click", close);
+    }
+  }, [contextMenu, reactionPicker]);
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) editInputRef.current.focus();
+  }, [editingId]);
+
   const fetchConversations = useCallback(async () => {
     if (!email) return;
     try {
-      const res = await fetch(`/api/conversations?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/conversations?email=${encodeURIComponent(email)}`, { credentials: "same-origin" });
       if (!res.ok) throw new Error("fetch failed");
       const data = await res.json();
-      setConversations(data);
+      setConversations(Array.isArray(data) ? data : []);
     } catch {
       setConversations([]);
     }
@@ -70,10 +112,10 @@ export default function FloatingChat() {
   const fetchMessages = useCallback(async () => {
     if (!selectedConvId) return;
     try {
-      const res = await fetch(`/api/messages?conversationId=${selectedConvId}`);
+      const res = await fetch(`/api/messages?conversationId=${selectedConvId}`, { credentials: "same-origin" });
       if (!res.ok) throw new Error("fetch failed");
       const data = await res.json();
-      setMessages(data);
+      setMessages(Array.isArray(data) ? data : []);
     } catch {
       setMessages([]);
     }
@@ -90,12 +132,15 @@ export default function FloatingChat() {
         const newMsg = payload.new as Message;
         setMessages((prev) => {
           if (prev.find((m) => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
+          return [...prev, { ...newMsg, reactions: [] }];
         });
+      })
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "Message" }, () => {
+        fetchMessages();
       })
       .subscribe();
     return () => { sb.removeChannel(channel); };
-  }, [selectedConvId]);
+  }, [selectedConvId, fetchMessages]);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -124,11 +169,15 @@ export default function FloatingChat() {
       const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ content, conversationId: selectedConvId, senderEmail: email, senderRole: "CUSTOMER" }),
       });
-      if (!res.ok) {
+      if (res.ok) {
+        const msg = await res.json();
+        setMessages((prev) => [...prev, msg]);
+      } else {
         const err = await res.json();
-        setSendError(err.error || "Message couldn't be sent. Please try again.");
+        setSendError(err.error || "Message couldn't be sent.");
         setNewMessage(content);
       }
     } catch {
@@ -136,6 +185,67 @@ export default function FloatingChat() {
       setNewMessage(content);
     }
     setSending(false);
+  }
+
+  async function handleReaction(messageId: string, emoji: string) {
+    setReactionPicker(null);
+    setContextMenu(null);
+    try {
+      const res = await fetch("/api/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ messageId, emoji, userEmail: email }),
+      });
+      if (res.ok) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== messageId) return m;
+            const existing = m.reactions.find((r) => r.emoji === emoji && r.user.email === email);
+            if (existing) return { ...m, reactions: m.reactions.filter((r) => r.id !== existing.id) };
+            return { ...m, reactions: [...m.reactions, { id: `temp-${Date.now()}`, emoji, user: { id: "me", name: name.split("@")[0], email } }] };
+          })
+        );
+      }
+    } catch { /* silent */ }
+  }
+
+  async function handleEdit(messageId: string) {
+    if (!editContent.trim()) return;
+    try {
+      const res = await fetch("/api/messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ id: messageId, content: editContent.trim(), userEmail: email }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setMessages((prev) => prev.map((m) => (m.id === messageId ? updated : m)));
+      }
+    } catch { /* silent */ }
+    setEditingId(null);
+    setEditContent("");
+  }
+
+  async function handleUnsend(messageId: string) {
+    setContextMenu(null);
+    try {
+      const res = await fetch(`/api/messages?id=${messageId}&userEmail=${encodeURIComponent(email)}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      if (res.ok) setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch { /* silent */ }
+  }
+
+  function handleContextMenu(e: React.MouseEvent, msg: Message) {
+    e.preventDefault();
+    if (msg.isDeleted) return;
+    if (msg.sender.email !== email) return;
+    const x = Math.min(e.clientX, window.innerWidth - 200);
+    const y = Math.min(e.clientY, window.innerHeight - 250);
+    setContextMenu({ messageId: msg.id, x, y });
   }
 
   function validateNewConversation(): boolean {
@@ -154,6 +264,7 @@ export default function FloatingChat() {
       const convRes = await fetch("/api/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ subject: newSubject.trim(), customerName: name.trim(), customerEmail: email }),
       });
       if (!convRes.ok) {
@@ -166,6 +277,7 @@ export default function FloatingChat() {
       await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ content: newBody.trim(), conversationId: conv.id, senderEmail: email, senderRole: "CUSTOMER" }),
       });
       setNewSubject("");
@@ -181,7 +293,7 @@ export default function FloatingChat() {
   }
 
   function handleBack() {
-    if (view === "chat") { setSelectedConvId(null); setView("list"); }
+    if (view === "chat") { setSelectedConvId(null); setEditingId(null); setReactionPicker(null); setContextMenu(null); setView("list"); }
     else if (view === "list") setView("bubble");
     else if (view === "info") setView("bubble");
   }
@@ -273,7 +385,6 @@ export default function FloatingChat() {
                   </div>
                   {createError && (
                     <div className="flex items-start gap-2 bg-red-50 text-red-600 text-xs rounded-lg px-3 py-2 border border-red-200">
-                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                       <span>{createError}</span>
                     </div>
                   )}
@@ -292,24 +403,116 @@ export default function FloatingChat() {
         )}
 
         {view === "chat" && selectedConvId && (
-          <div className="flex flex-col h-full">
+          <div className="flex flex-col h-full relative">
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((msg) => {
                 const isOwn = msg.sender.email === email;
+                const isDeleted = msg.isDeleted;
+                const grouped = groupReactions(msg.reactions);
+
                 return (
-                  <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${isOwn ? "bg-[#0d4d4d] text-white rounded-br-md" : "bg-gray-100 text-[#0a2e2e] rounded-bl-md"}`}>
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
-                      <p className={`text-[10px] mt-1 ${isOwn ? "text-white/60" : "text-gray-400"}`}>{formatTime(msg.createdAt)}</p>
+                  <div
+                    key={msg.id}
+                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                    onContextMenu={(e) => handleContextMenu(e, msg)}
+                  >
+                    <div className="max-w-[80%] relative">
+                      {!isDeleted ? (
+                        <>
+                          <div className={`rounded-2xl px-4 py-2.5 ${isOwn ? "bg-[#0d4d4d] text-white rounded-br-md" : "bg-gray-100 text-[#0a2e2e] rounded-bl-md"}`}>
+                            {editingId === msg.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  ref={editInputRef}
+                                  type="text"
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") handleEdit(msg.id); if (e.key === "Escape") { setEditingId(null); setEditContent(""); } }}
+                                  className="flex-1 bg-white/20 text-white placeholder-white/50 text-sm px-2 py-1 rounded-lg outline-none border border-white/30 min-w-0"
+                                />
+                                <button onClick={() => handleEdit(msg.id)} className="text-[10px] text-[#3ecbac] font-semibold shrink-0">Save</button>
+                                <button onClick={() => { setEditingId(null); setEditContent(""); }} className="text-[10px] text-white/60 shrink-0">Cancel</button>
+                              </div>
+                            ) : (
+                              <p className="text-sm leading-relaxed">{msg.content}</p>
+                            )}
+                            <p className={`text-[10px] mt-1 ${isOwn ? "text-white/60" : "text-gray-400"}`}>
+                              {formatTime(msg.createdAt)}
+                              {msg.editedAt && " (edited)"}
+                            </p>
+                          </div>
+                          {/* Reactions */}
+                          {grouped.length > 0 && (
+                            <div className={`flex flex-wrap gap-1 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}>
+                              {grouped.map((g) => {
+                                const hasOwn = g.users.some((u) => u === email || u === name.split("@")[0]);
+                                return (
+                                  <button
+                                    key={g.emoji}
+                                    onClick={() => handleReaction(msg.id, g.emoji)}
+                                    className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full border transition-colors ${
+                                      hasOwn ? "bg-[#3ecbac]/20 border-[#3ecbac]/40 text-[#0d4d4d]" : "bg-gray-50 border-gray-200 text-gray-600"
+                                    }`}
+                                  >
+                                    <span>{g.emoji}</span>
+                                    <span className="font-medium">{g.count}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="rounded-2xl px-4 py-2.5 bg-gray-50 border border-dashed border-gray-300">
+                          <p className="text-xs text-gray-400 italic">This message was unsent</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Context Menu */}
+            {contextMenu && (() => {
+              const msg = messages.find((m) => m.id === contextMenu.messageId);
+              if (!msg || msg.isDeleted || msg.sender.email !== email) return null;
+              const canAct = canEditUnsend(msg.createdAt);
+              return (
+                <div className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]" style={{ left: contextMenu.x, top: contextMenu.y }} onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => { setReactionPicker(contextMenu.messageId); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                    <span>😀</span> React
+                  </button>
+                  {canAct && (
+                    <>
+                      <button onClick={() => { setEditingId(contextMenu.messageId); setEditContent(msg.content); setContextMenu(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
+                        Edit
+                      </button>
+                      <button onClick={() => handleUnsend(contextMenu.messageId)} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        Unsend
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Quick Reaction Picker */}
+            {reactionPicker && (
+              <div className="fixed z-50 bg-white rounded-full shadow-xl border border-gray-200 px-2 py-1.5 flex items-center gap-0.5" style={{ left: "50%", bottom: "80px", transform: "translateX(-50%)" }} onClick={(e) => e.stopPropagation()}>
+                {QUICK_REACTIONS.map((emoji) => (
+                  <button key={emoji} onClick={() => handleReaction(reactionPicker, emoji)} className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded-full transition-all hover:scale-125">
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {sendError && (
               <div className="mx-3 mb-2 flex items-start gap-2 bg-red-50 text-red-600 text-xs rounded-lg px-3 py-2 border border-red-200">
-                <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                 <span>{sendError}</span>
               </div>
             )}
