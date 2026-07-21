@@ -5,10 +5,14 @@ import Products from "@/components/Products";
 import News from "@/components/News";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
+import CustomCursor from "@/components/CustomCursor";
+import ScrollReveal from "@/components/ScrollReveal";
 
 export default function Home() {
   return (
     <main>
+      <CustomCursor />
+      <ScrollReveal />
       <Header />
       <Hero />
       <About />
