@@ -1,42 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await request.json();
     const { messageId, emoji, userEmail } = body;
 
-    if (!messageId || !emoji || !userEmail) {
-      return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
+    if (!messageId || !emoji) {
+      return NextResponse.json({ error: "Message ID and emoji are required." }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found." }, { status: 404 });
+    let dbUser;
+    if (user) {
+      dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    } else if (userEmail) {
+      dbUser = await prisma.user.findUnique({ where: { email: userEmail } });
     }
 
-    const message = await prisma.message.findUnique({ where: { id: messageId } });
-    if (!message) {
-      return NextResponse.json({ error: "Message not found." }, { status: 404 });
-    }
+    if (!dbUser) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-    const existing = await prisma.reaction.findUnique({
-      where: { messageId_userId_emoji: { messageId, userId: user.id, emoji } },
+    const existing = await prisma.reaction.findFirst({
+      where: { messageId, emoji, userId: dbUser.id },
     });
 
     if (existing) {
       await prisma.reaction.delete({ where: { id: existing.id } });
-      return NextResponse.json({ action: "removed", emoji });
+      return NextResponse.json({ removed: true });
     }
 
     const reaction = await prisma.reaction.create({
-      data: { messageId, userId: user.id, emoji },
-      include: { user: { select: { name: true, email: true } } },
+      data: { messageId, emoji, userId: dbUser.id },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
 
-    return NextResponse.json({ action: "added", reaction }, { status: 201 });
+    return NextResponse.json(reaction, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "We couldn't process your reaction. Please try again." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process reaction." }, { status: 500 });
   }
 }
 
@@ -44,13 +47,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const messageId = searchParams.get("messageId");
-    if (!messageId) {
-      return NextResponse.json({ error: "Message ID is required." }, { status: 400 });
-    }
+    if (!messageId) return NextResponse.json({ error: "Message ID is required." }, { status: 400 });
 
     const reactions = await prisma.reaction.findMany({
       where: { messageId },
-      include: { user: { select: { name: true, email: true } } },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
 
     return NextResponse.json(reactions);

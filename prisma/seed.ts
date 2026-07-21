@@ -11,7 +11,11 @@ const prisma = new PrismaClient();
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL || "admin@piliadheseal.com";
   const adminName = process.env.ADMIN_NAME || "Admin";
-  const adminPassword = process.env.ADMIN_PASSWORD || "Admin123!";
+  const adminPassword = process.env.ADMIN_PASSWORD;
+if (!adminPassword) {
+  console.error("ADMIN_PASSWORD environment variable is required");
+  process.exit(1);
+}
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;

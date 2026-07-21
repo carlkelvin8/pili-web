@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 
@@ -19,6 +19,28 @@ export const metadata: Metadata = {
   title: "Pili AdheSeal Inc. | Industrial Sealants & Adhesives",
   description:
     "Pili AdheSeal Inc. provides high-performance sealants, adhesives, hybrid sealants, and glues customized for defense, construction, automotive, and more.",
+  openGraph: {
+    title: "Pili AdheSeal Inc. | Industrial Sealants & Adhesives",
+    description: "High-performance sealants, adhesives, hybrid sealants, and glues for defense, construction, automotive, and more.",
+    type: "website",
+    locale: "en_US",
+    siteName: "Pili AdheSeal Inc.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pili AdheSeal Inc. | Industrial Sealants & Adhesives",
+    description: "High-performance sealants, adhesives, hybrid sealants, and glues for defense, construction, automotive, and more.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0d4d4d",
 };
 
 export default function RootLayout({

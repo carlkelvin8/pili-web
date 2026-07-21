@@ -8,15 +8,16 @@ interface Customer {
   name: string;
   email: string;
   createdAt: string;
-  conversationCount: number;
-  messageCount: number;
-  lastMessageAt: string | null;
+  totalConversations: number;
+  totalMessages: number;
+  lastActivity: string;
+  lastMessage: string | null;
   conversations: {
     id: string;
     subject: string;
     status: string;
-    createdAt: string;
-    _count: { messages: number };
+    messageCount: number;
+    updatedAt: string;
   }[];
 }
 
@@ -34,7 +35,7 @@ export default function CustomersPage() {
       const res = await fetch("/api/customers", { credentials: "same-origin" });
       if (!res.ok) throw new Error("Failed to load customers");
       const data = await res.json();
-      setCustomers(data.customers || []);
+      setCustomers(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong loading customers.");
     } finally {
@@ -51,9 +52,9 @@ export default function CustomersPage() {
       return c.name?.toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
     })
     .sort((a, b) => {
-      if (sortBy === "messages") return b.messageCount - a.messageCount;
+      if (sortBy === "messages") return b.totalMessages - a.totalMessages;
       if (sortBy === "name") return (a.name || a.email).localeCompare(b.name || b.email);
-      if (sortBy === "recent") return (b.lastMessageAt || b.createdAt).localeCompare(a.lastMessageAt || a.createdAt);
+      if (sortBy === "recent") return (b.lastActivity || b.createdAt).localeCompare(a.lastActivity || a.createdAt);
       return 0;
     });
 
@@ -64,7 +65,6 @@ export default function CustomersPage() {
         <p className="text-sm text-gray-500 mt-1">Manage your customer relationships and view conversation history.</p>
       </div>
 
-      {/* Stats strip */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500 font-medium">Total Customers</p>
@@ -72,15 +72,14 @@ export default function CustomersPage() {
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500 font-medium">Total Conversations</p>
-          <p className="text-2xl font-bold text-[#0a2e2e] mt-1">{customers.reduce((s, c) => s + c.conversationCount, 0)}</p>
+          <p className="text-2xl font-bold text-[#0a2e2e] mt-1">{customers.reduce((s, c) => s + c.totalConversations, 0)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500 font-medium">Total Messages</p>
-          <p className="text-2xl font-bold text-[#0a2e2e] mt-1">{customers.reduce((s, c) => s + c.messageCount, 0)}</p>
+          <p className="text-2xl font-bold text-[#0a2e2e] mt-1">{customers.reduce((s, c) => s + c.totalMessages, 0)}</p>
         </div>
       </div>
 
-      {/* Search + sort */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -150,10 +149,10 @@ export default function CustomersPage() {
                       <span className="text-xs text-gray-400">{customer.email}</span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{customer.conversationCount} conversation{customer.conversationCount !== 1 ? "s" : ""}</span>
-                      <span>{customer.messageCount} message{customer.messageCount !== 1 ? "s" : ""}</span>
-                      {customer.lastMessageAt && (
-                        <span>Last active {new Date(customer.lastMessageAt).toLocaleDateString()}</span>
+                      <span>{customer.totalConversations} conversation{customer.totalConversations !== 1 ? "s" : ""}</span>
+                      <span>{customer.totalMessages} message{customer.totalMessages !== 1 ? "s" : ""}</span>
+                      {customer.lastActivity && (
+                        <span>Last active {new Date(customer.lastActivity).toLocaleDateString()}</span>
                       )}
                     </div>
                     {customer.conversations.length > 0 && (
@@ -171,7 +170,7 @@ export default function CustomersPage() {
                               "bg-blue-500"
                             }`} />
                             <span className="truncate max-w-[150px]">{conv.subject}</span>
-                            <span className="text-gray-400">({conv._count.messages})</span>
+                            <span className="text-gray-400">({conv.messageCount})</span>
                           </Link>
                         ))}
                         {customer.conversations.length > 3 && (

@@ -107,7 +107,7 @@ export default function MessageThread({
       const res = await fetch("/api/quick-replies", { credentials: "same-origin" });
       if (res.ok) {
         const data = await res.json();
-        setQuickReplies(data.quickReplies || []);
+        setQuickReplies(Array.isArray(data) ? data : []);
       }
     } catch { /* silent */ }
   }, []);

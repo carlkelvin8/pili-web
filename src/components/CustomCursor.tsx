@@ -15,11 +15,11 @@ export default function CustomCursor() {
     let mouseY = 0;
     let cursorX = 0;
     let cursorY = 0;
+    let animId: number;
 
     const handleMouseMove = (e: MouseEvent) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
-      // Dot follows immediately
       dot.style.left = `${mouseX}px`;
       dot.style.top = `${mouseY}px`;
     };
@@ -50,13 +50,12 @@ export default function CustomCursor() {
       }
     };
 
-    // Smooth cursor follow with lerp
     const animate = () => {
       cursorX += (mouseX - cursorX) * 0.12;
       cursorY += (mouseY - cursorY) * 0.12;
       cursor.style.left = `${cursorX}px`;
       cursor.style.top = `${cursorY}px`;
-      requestAnimationFrame(animate);
+      animId = requestAnimationFrame(animate);
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -66,6 +65,7 @@ export default function CustomCursor() {
     animate();
 
     return () => {
+      cancelAnimationFrame(animId);
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseout", handleMouseOut);

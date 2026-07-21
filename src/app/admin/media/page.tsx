@@ -31,7 +31,7 @@ export default function MediaPage() {
   const [previewFile, setPreviewFile] = useState<MediaFile | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const SUPABASE_URL = "https://bxwsxgcuvpmaczdemhot.supabase.co";
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://bxwsxgcuvpmaczdemhot.supabase.co";
   const BUCKET = "cms-images";
 
   const fetchFiles = useCallback(async () => {
@@ -41,7 +41,7 @@ export default function MediaPage() {
       const res = await fetch("/api/media", { credentials: "same-origin" });
       if (!res.ok) throw new Error("Failed to load media files");
       const data = await res.json();
-      setFiles(data.files || []);
+      setFiles(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong loading media.");
     } finally {

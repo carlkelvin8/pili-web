@@ -47,7 +47,7 @@ export default function ActivityPage() {
       const res = await fetch(`/api/activity-log?${params.toString()}`, { credentials: "same-origin" });
       if (!res.ok) throw new Error("Failed to load activity log");
       const data = await res.json();
-      setActivities(data.activities || []);
+      setActivities(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong loading activity.");
     } finally {

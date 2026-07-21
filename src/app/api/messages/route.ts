@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +41,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await request.json();
     const { content, conversationId, senderEmail, senderRole, attachmentUrl, attachmentName } = body;
 
@@ -57,23 +61,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!senderEmail) {
-      return NextResponse.json(
-        { error: "Your session has expired. Please refresh the page." },
-        { status: 400 }
-      );
+    let sender;
+    if (user) {
+      sender = await prisma.user.findUnique({ where: { id: user.id } });
+    } else if (senderEmail) {
+      sender = await prisma.user.findUnique({ where: { email: senderEmail } });
+      if (!sender) {
+        sender = await prisma.user.create({
+          data: {
+            email: senderEmail,
+            name: senderEmail.split("@")[0],
+            role: senderRole === "ADMIN" ? "ADMIN" : "CUSTOMER",
+          },
+        });
+      }
     }
 
-    let sender = await prisma.user.findUnique({ where: { email: senderEmail } });
-
     if (!sender) {
-      sender = await prisma.user.create({
-        data: {
-          email: senderEmail,
-          name: senderEmail.split("@")[0],
-          role: senderRole === "ADMIN" ? "ADMIN" : "CUSTOMER",
-        },
-      });
+      return NextResponse.json({ error: "Your session has expired. Please refresh the page." }, { status: 401 });
     }
 
     const message = await prisma.message.create({
@@ -107,6 +112,9 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await request.json();
     const { id, content, userEmail } = body;
 
@@ -114,17 +122,19 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 
-    if (!userEmail) {
-      return NextResponse.json({ error: "Your session has expired." }, { status: 401 });
+    let sender;
+    if (user) {
+      sender = await prisma.user.findUnique({ where: { id: user.id } });
+    } else if (userEmail) {
+      sender = await prisma.user.findUnique({ where: { email: userEmail } });
     }
 
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
-    if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+    if (!sender) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
     const message = await prisma.message.findUnique({ where: { id } });
     if (!message) return NextResponse.json({ error: "Message not found." }, { status: 404 });
 
-    if (message.senderId !== user.id) {
+    if (message.senderId !== sender.id) {
       return NextResponse.json({ error: "You can only edit your own messages." }, { status: 403 });
     }
 
@@ -152,20 +162,28 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const userEmail = searchParams.get("userEmail");
 
     if (!id) return NextResponse.json({ error: "Message ID is required." }, { status: 400 });
-    if (!userEmail) return NextResponse.json({ error: "Your session has expired." }, { status: 401 });
 
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
-    if (!user) return NextResponse.json({ error: "User not found." }, { status: 404 });
+    let sender;
+    if (user) {
+      sender = await prisma.user.findUnique({ where: { id: user.id } });
+    } else if (userEmail) {
+      sender = await prisma.user.findUnique({ where: { email: userEmail } });
+    }
+
+    if (!sender) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
     const message = await prisma.message.findUnique({ where: { id } });
     if (!message) return NextResponse.json({ error: "Message not found." }, { status: 404 });
 
-    if (message.senderId !== user.id) {
+    if (message.senderId !== sender.id) {
       return NextResponse.json({ error: "You can only unsend your own messages." }, { status: 403 });
     }
 

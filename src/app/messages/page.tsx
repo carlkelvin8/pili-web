@@ -29,14 +29,19 @@ export default function CustomerMessagesPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("pili_customer");
-    if (saved) {
-      const data = JSON.parse(saved);
-      setCustomerEmail(data.email);
-      setCustomerName(data.name);
-      setEmailEntered(true);
+    try {
+      const saved = localStorage.getItem("pili_customer");
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.name && data.email) {
+          setCustomerName(data.name);
+          setCustomerEmail(data.email);
+          setEmailEntered(true);
+        }
+      }
+    } catch {
+      localStorage.removeItem("pili_customer");
     }
-    setMounted(true);
   }, []);
 
   const fetchConversationInfo = useCallback(

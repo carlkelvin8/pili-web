@@ -84,11 +84,17 @@ export default function FloatingChat() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("pili_customer");
-    if (saved) {
-      const data = JSON.parse(saved);
-      setName(data.name);
-      setEmail(data.email);
+    try {
+      const saved = localStorage.getItem("pili_customer");
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.name && data.email) {
+          setName(data.name);
+          setEmail(data.email);
+        }
+      }
+    } catch {
+      localStorage.removeItem("pili_customer");
     }
   }, []);
 
