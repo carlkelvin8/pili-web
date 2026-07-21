@@ -18,6 +18,7 @@ model User {
   conversations Conversation[] @relation("CustomerConversations")
   messages      Message[]      @relation("SenderMessages")
   reactions     Reaction[]
+  tags          CustomerTag[]
 }
 
 enum Role {
@@ -29,17 +30,26 @@ model Conversation {
   id         String    @id @default(uuid()) @db.Uuid
   subject    String
   status     Status    @default(OPEN)
+  priority   Priority  @default(NORMAL)
   customerId String    @db.Uuid
   customer   User      @relation("CustomerConversations", fields: [customerId], references: [id])
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   messages   Message[]
+  notes      ConversationNote[]
 }
 
 enum Status {
   OPEN
   CLOSED
   PENDING
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 model Message {
@@ -71,8 +81,8 @@ model Reaction {
 }
 
 model PageContent {
-  section String @id
-  content Json
+  section   String   @id
+  content   Json
   updatedAt DateTime @updatedAt
 }
 
@@ -86,9 +96,31 @@ model QuickReply {
 }
 
 model ActivityLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  action    String
-  details   Json?
+  id         String   @id @default(uuid()) @db.Uuid
+  action     String
+  details    Json?
   adminEmail String
+  createdAt  DateTime @default(now())
+}
+
+model ConversationNote {
+  id             String       @id @default(uuid()) @db.Uuid
+  content        String
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  adminEmail     String
+  isInternal     Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model CustomerTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  color     String   @default("#3ecbac")
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@unique([name, userId])
 }
