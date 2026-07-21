@@ -115,11 +115,11 @@ export default function Hero() {
 
         {/* Heading */}
         <h1 className="animate-slide-up text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] tracking-tight">
-          Engineered
+          Pili AdheSeal
           <br />
           <span className="relative inline-block">
             <span className="relative z-10 bg-gradient-to-r from-[var(--color-primary-light)] via-[#7edbbe] to-[var(--color-primary-light)] bg-clip-text text-transparent">
-              Bonding Solutions
+              Sustainable Solutions
             </span>
             {/* Shimmer effect on text */}
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
@@ -128,9 +128,9 @@ export default function Hero() {
 
         {/* Subheading */}
         <p className="animate-slide-up-delayed mt-8 text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-          High-performance sealants, adhesives, and glues — 
-          <span className="text-white font-medium"> customized for every industry</span>, 
-          from defense to construction.
+          Transforming agricultural waste into innovative yet high-performance solutions
+          <span className="text-white font-medium"> that create value for industries</span>,
+          empower farming communities, and protect the environment.
         </p>
 
         {/* CTA Buttons */}
@@ -158,7 +158,7 @@ export default function Hero() {
 
         {/* Product tags */}
         <div className="animate-slide-up-more-delayed mt-16 flex flex-wrap justify-center gap-3">
-          {["Pili Seal", "Pili Adhesive", "Pili Hybrid Sealant", "Pili Glue"].map((product, i) => (
+          {["Pili Adhesive", "Pili Glue", "Pili Glue Stick", "Pili Seal", "Pili Hybrid Sealant"].map((product, i) => (
             <span
               key={product}
               className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 backdrop-blur-sm hover:bg-white/10 hover:border-white/25 transition-all duration-300"

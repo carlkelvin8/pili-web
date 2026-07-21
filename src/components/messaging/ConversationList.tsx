@@ -15,6 +15,7 @@ interface Conversation {
     createdAt: string;
     sender: { name: string; role: string };
   }[];
+  unreadCount?: number;
 }
 
 interface Props {
@@ -150,6 +151,11 @@ export default function ConversationList({
                     >
                       {conv.status}
                     </span>
+                    {(conv.unreadCount ?? 0) > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {conv.unreadCount}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {conv.customer.name} &middot; {conv.customer.email}

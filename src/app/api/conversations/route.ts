@@ -25,10 +25,20 @@ export async function GET(request: NextRequest) {
             take: 1,
             include: { sender: { select: { name: true, role: true } } },
           },
+          _count: {
+            select: {
+              messages: { where: { isRead: false, sender: { role: "CUSTOMER" } } },
+            },
+          },
         },
         orderBy: { updatedAt: "desc" },
       });
-      return NextResponse.json(conversations);
+      return NextResponse.json(
+        conversations.map((c) => ({
+          ...c,
+          unreadCount: c._count.messages,
+        }))
+      );
     }
   }
 
@@ -96,8 +106,22 @@ export async function POST(request: NextRequest) {
   return NextResponse.json(conversation, { status: 201 });
 }
 
-// PATCH /api/conversations - Update conversation status
+// PATCH /api/conversations - Update conversation status (admin only)
 export async function PATCH(request: NextRequest) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+  if (!dbUser || dbUser.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const body = await request.json();
   const { id, status } = body;
 

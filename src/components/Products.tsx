@@ -2,32 +2,39 @@ import Image from "next/image";
 
 const products = [
   {
-    name: "Pili Seal",
-    description:
-      "High-performance sealant designed to create watertight, airtight barriers. Customized for construction joints, defense enclosures, and industrial sealing applications.",
-    features: ["Waterproof", "UV Resistant", "Flexible Cure"],
-    image: "/products/pili-seal.svg",
-  },
-  {
     name: "Pili Adhesive",
+    tagline: "Engineered for Stronger Bonds. Inspired by Nature.",
     description:
-      "Industrial-strength adhesive engineered for permanent bonding across diverse substrates — metal, wood, plastic, and composites.",
-    features: ["High Tensile Strength", "Fast Setting", "Multi-Surface"],
+      "A next-generation bio-based adhesive that delivers exceptional bonding performance while supporting a more sustainable future. Built for industrial reliability and everyday versatility.",
     image: "/products/pili-adhesive.svg",
   },
   {
-    name: "Pili Hybrid Sealant",
+    name: "Pili Glue",
+    tagline: "Powerful Bonding. Naturally Better.",
     description:
-      "Combines the best properties of sealants and adhesives. Provides elastic sealing with strong adhesion — ideal for dynamic joints and vibration-prone environments.",
-    features: ["Elastic Bonding", "Paintable", "No Shrinkage"],
-    image: "/products/pili-hybrid.svg",
+      "An eco-conscious multi-purpose glue that combines dependable adhesion with renewable materials—perfect for home, office, education, and light industrial applications.",
+    image: "/products/pili-glue.svg",
   },
   {
-    name: "Pili Glue",
+    name: "Pili Glue Stick",
+    tagline: "Smooth Application. Strong Hold. Zero Mess.",
     description:
-      "Versatile, fast-bonding glue for general and specialized applications. Available in various viscosities and cure times to match your process requirements.",
-    features: ["Quick Bond", "Clear Finish", "Customizable Viscosity"],
+      "A premium glue stick designed for clean, effortless use with reliable bonding performance. Ideal for schools, offices, creative projects, and everyday tasks.",
     image: "/products/pili-glue.svg",
+  },
+  {
+    name: "Pili Seal",
+    tagline: "Seal with Confidence. Protect for Years.",
+    description:
+      "A high-performance, bio-based sealant that creates durable, weather-resistant seals while promoting a more sustainable approach to modern construction and manufacturing.",
+    image: "/products/pili-seal.svg",
+  },
+  {
+    name: "Pili Hybrid Sealant",
+    tagline: "Where Adhesive Meets Sealant.",
+    description:
+      "A revolutionary 2-in-1 hybrid solution that delivers superior adhesion, long-lasting flexibility, and outstanding weather resistance—engineered for demanding industrial applications.",
+    image: "/products/pili-hybrid.svg",
   },
 ];
 
@@ -43,7 +50,7 @@ export default function Products() {
             Engineered for Performance
           </h2>
           <p className="mt-4 text-lg text-gray-600">
-            Four core product lines, each customizable to your industry&apos;s specific requirements.
+            Five core product lines, each customizable to your industry&apos;s specific requirements.
           </p>
         </div>
 
@@ -74,22 +81,12 @@ export default function Products() {
                 <h3 className="text-2xl sm:text-3xl font-bold text-[var(--color-primary)]">
                   {product.name}
                 </h3>
+                <p className="mt-2 text-[var(--color-accent)] font-semibold text-lg">
+                  {product.tagline}
+                </p>
                 <p className="mt-4 text-gray-600 text-lg leading-relaxed">
                   {product.description}
                 </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {product.features.map((f) => (
-                    <span
-                      key={f}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-full bg-[var(--color-primary-light)]/10 text-[var(--color-accent)] border border-[var(--color-primary-light)]/20"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      {f}
-                    </span>
-                  ))}
-                </div>
                 <a
                   href="#contact"
                   className="inline-flex items-center gap-2 mt-8 text-[var(--color-accent)] font-semibold hover:text-[var(--color-primary)] transition-colors group/link"

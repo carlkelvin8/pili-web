@@ -10,9 +10,8 @@ export default function Header() {
     { label: "Home", href: "#hero" },
     { label: "About", href: "#about" },
     { label: "Products", href: "#products" },
-    { label: "Industries", href: "#industries" },
-    { label: "Why Us", href: "#why-us" },
-    { label: "Contact", href: "#contact" },
+    { label: "News", href: "#news" },
+    { label: "Contacts", href: "#contact" },
     { label: "Messages", href: "/messages" },
   ];
 
@@ -23,7 +22,7 @@ export default function Header() {
           {/* Logo */}
           <a href="#hero" className="flex items-center gap-2">
             <Image
-              src="/logo.png"
+              src="https://drive.google.com/uc?export=view&id=1zvZ75GUdFWmuKp0Ci0dhMxWUh17gOxkf"
               alt="Pili AdheSeal Inc."
               width={48}
               height={48}

@@ -15,6 +15,8 @@ export default function AdminMessagesPage() {
     customer: { name: string; email: string };
   } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [totalUnread, setTotalUnread] = useState(0);
+  const initialLoadDone = useRef(false);
   const router = useRouter();
   const supabaseRef = useRef(createClient());
 
@@ -29,6 +31,61 @@ export default function AdminMessagesPage() {
     }
     getUser();
   }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    const res = await fetch("/api/conversations/unread");
+    const data = await res.json();
+    setTotalUnread(data.count);
+  }, []);
+
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      fetchUnreadCount();
+    }
+  }, [fetchUnreadCount, refreshKey]);
+
+  // Real-time notification listener
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
+    const sb = supabaseRef.current;
+    const channel = sb
+      .channel("admin-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "Message" },
+        () => {
+          fetchUnreadCount();
+          setRefreshKey((k) => k + 1);
+
+          if ("Notification" in window && Notification.permission === "granted") {
+            fetch("/api/conversations")
+              .then((res) => res.json())
+              .then((conversations) => {
+                const conv = conversations.find(
+                  (c: { id: string }) =>
+                    c.messages?.[0] !== undefined
+                );
+                if (conv) {
+                  new Notification("New message received", {
+                    body: conv.customer?.name + ": " + (conv.messages?.[0]?.content || "New message"),
+                    icon: "/logo.png",
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      sb.removeChannel(channel);
+    };
+  }, [fetchUnreadCount]);
 
   const fetchConversationInfo = useCallback(async (id: string) => {
     const res = await fetch("/api/conversations");
@@ -57,6 +114,7 @@ export default function AdminMessagesPage() {
     });
     fetchConversationInfo(selectedId);
     setRefreshKey((k) => k + 1);
+    fetchUnreadCount();
   }
 
   async function handleLogout() {
@@ -86,6 +144,11 @@ export default function AdminMessagesPage() {
             Pili AdheSeal
           </h1>
           <span className="text-[#3ecbac] text-sm">Admin Dashboard</span>
+          {totalUnread > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              {totalUnread} unread
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <span className="text-xs text-gray-300">{userEmail}</span>

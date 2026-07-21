@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -10,7 +11,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const [registeredMessage] = useState(() =>
+    searchParams.get("registered") === "true"
+      ? "Account created successfully! Please sign in."
+      : ""
+  );
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -79,6 +87,12 @@ export default function LoginPage() {
             </div>
           )}
 
+          {registeredMessage && (
+            <div className="bg-green-50 text-green-600 text-sm rounded-lg px-4 py-3">
+              {registeredMessage}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -88,13 +102,19 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
           <a
             href="/messages"
-            className="text-sm text-[#3ecbac] hover:underline"
+            className="text-sm text-[#3ecbac] hover:underline block"
           >
             Customer? Go to Messages
           </a>
+          <Link
+            href="/register"
+            className="text-sm text-gray-500 hover:text-[#3ecbac] transition-colors"
+          >
+            Don&apos;t have an admin account? Register here
+          </Link>
         </div>
       </div>
     </div>
