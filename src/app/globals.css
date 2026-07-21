@@ -16,7 +16,6 @@ html {
 
 body {
   font-family: var(--font-inter);
-  cursor: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -56,6 +55,15 @@ h1, h2, h3, h4, h5, h6 {
 
 .custom-cursor-dot.hovering {
   transform: translate(-50%, -50%) scale(0.5);
+}
+
+body.has-custom-cursor {
+  cursor: none;
+}
+
+body.has-custom-cursor a,
+body.has-custom-cursor button {
+  cursor: none;
 }
 
 /* Hero Animations */
@@ -223,9 +231,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Interactive hover effects */
-a, button {
-  cursor: none;
-}
 
 /* Scroll progress bar */
 .scroll-progress {

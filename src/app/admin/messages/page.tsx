@@ -139,30 +139,7 @@ export default function AdminMessagesPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      <header className="bg-[#0a2e2e] text-white px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold font-[family-name:var(--font-poppins)]">
-            Pili AdheSeal
-          </h1>
-          <span className="text-[#3ecbac] text-sm">Admin Dashboard</span>
-          {totalUnread > 0 && (
-            <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-              {totalUnread} unread
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-gray-300">{userEmail}</span>
-          <button
-            onClick={handleLogout}
-            className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <div className="h-[calc(100vh-49px)] flex flex-col bg-gray-50">
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 border-r border-gray-200 bg-white flex flex-col shrink-0">
           <div className="p-4 border-b border-gray-200">

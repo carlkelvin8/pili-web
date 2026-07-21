@@ -62,12 +62,14 @@ export default function CustomCursor() {
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseover", handleMouseOver);
     document.addEventListener("mouseout", handleMouseOut);
+    document.body.classList.add("has-custom-cursor");
     animate();
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseover", handleMouseOver);
       document.removeEventListener("mouseout", handleMouseOut);
+      document.body.classList.remove("has-custom-cursor");
     };
   }, []);
 
