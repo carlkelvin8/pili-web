@@ -367,15 +367,39 @@ export default function InventoryPage() {
                     className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-transparent outline-none" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                  <input type="url" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })}
-                    placeholder="https://... or /products/..."
-                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-transparent outline-none" />
-                  {form.image && (
-                    <div className="mt-2 w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
-                      <img src={form.image} alt="Preview" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                    </div>
-                  )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                  <div className="flex items-start gap-4">
+                    <label className="flex-1 flex flex-col items-center justify-center px-4 py-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[var(--color-primary-light)] hover:bg-gray-50 transition-colors">
+                      <svg className="w-8 h-8 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                      <span className="text-xs text-gray-500">{form.image ? "Replace image" : "Click to upload"}</span>
+                      <span className="text-[10px] text-gray-400">PNG, JPG, WebP, SVG (max 5MB)</span>
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setFormLoading(true);
+                          try {
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            fd.append("folder", "products");
+                            const res = await fetch("/api/upload", { method: "POST", credentials: "same-origin", body: fd });
+                            if (!res.ok) throw new Error("Upload failed");
+                            const data = await res.json();
+                            setForm({ ...form, image: data.url });
+                          } catch { setFormError("Failed to upload image"); }
+                          setFormLoading(false);
+                        }} />
+                    </label>
+                    {form.image && (
+                      <div className="relative w-20 h-20 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                        <img src={form.image} alt="Preview" className="w-full h-full object-contain" />
+                        <button type="button" onClick={() => setForm({ ...form, image: "" })}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">×</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
