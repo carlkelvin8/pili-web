@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
       avgResponseTimeRaw,
       // Messages per month (12m) via aggregation
       msgsPerMonthRaw,
+      // Conversations per month (12m) for inquiries trend
+      convsPerMonthRaw,
       // Messages 30d count for trend
       messages30dCount,
       messages60dCount,
@@ -123,6 +125,14 @@ export async function GET(request: NextRequest) {
         GROUP BY month
         ORDER BY month ASC
       `,
+      // Conversations per month (12m) for inquiries trend
+      prisma.$queryRaw<{ month: string; count: bigint }[]>`
+        SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
+        FROM "Conversation"
+        WHERE "createdAt" >= ${twelveMonthsAgo}
+        GROUP BY month
+        ORDER BY month ASC
+      `,
       // Messages 30d count
       prisma.message.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       // Messages 30-60d count (prev 30d for trend)
@@ -167,6 +177,11 @@ export async function GET(request: NextRequest) {
     // Populate messages per month from SQL aggregation
     for (const row of msgsPerMonthRaw) {
       if (monthlyData[row.month]) monthlyData[row.month].messages = Number(row.count);
+    }
+
+    // Populate inquiries per month from SQL aggregation
+    for (const row of convsPerMonthRaw) {
+      if (monthlyData[row.month]) monthlyData[row.month].inquiries = Number(row.count);
     }
 
     // Status breakdown
