@@ -12,6 +12,7 @@ const segmentLabels: Record<string, string> = {
   cms: "CMS Editor",
   activity: "Activity Log",
   settings: "Settings",
+  users: "User Management",
 };
 
 export default function Breadcrumbs() {
