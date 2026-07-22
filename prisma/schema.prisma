@@ -183,8 +183,8 @@ model Order {
   id              String      @id @default(uuid()) @db.Uuid
   orderNumber     String      @unique
   status          OrderStatus @default(PENDING)
-  customerId      String      @db.Uuid
-  customer        User        @relation(fields: [customerId], references: [id])
+  customerId      String?     @db.Uuid
+  customer        User?       @relation(fields: [customerId], references: [id])
   shippingName    String
   shippingPhone   String
   shippingAddress String

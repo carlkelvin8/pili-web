@@ -59,18 +59,18 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const currentUser = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!currentUser || (currentUser.role !== "ADMIN" && currentUser.role !== "STAFF")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const body = await request.json();
-    const { customerId, shippingName, shippingPhone, shippingAddress, shippingCity, shippingProvince, shippingZip, notes, items } = body;
+    const { shippingName, shippingPhone, shippingAddress, shippingCity, shippingProvince, shippingZip, notes, items } = body;
 
-    if (!customerId || !shippingName || !shippingPhone || !shippingAddress || !items?.length) {
+    if (!shippingName || !shippingPhone || !shippingAddress || !items?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    let customerId: string | null = null;
+    if (user) {
+      const currentUser = await prisma.user.findUnique({ where: { id: user.id } });
+      customerId = currentUser?.id ?? null;
     }
 
     let subtotal = 0;
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     const order = await prisma.order.create({
       data: {
         orderNumber: generateOrderNumber(),
-        customerId,
+        customerId: customerId || undefined,
         shippingName,
         shippingPhone,
         shippingAddress,
