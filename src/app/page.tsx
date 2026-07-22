@@ -7,6 +7,7 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
 import ScrollReveal from "@/components/ScrollReveal";
+import ScrollProgress from "@/components/ScrollProgress";
 import FloatingChat from "@/components/FloatingChat";
 import { getAllCmsContent } from "@/lib/cms";
 
@@ -16,6 +17,7 @@ export default async function Home() {
   return (
     <main>
       <CustomCursor />
+      <ScrollProgress />
       <ScrollReveal />
       <Header />
       <Hero data={cms.hero} />

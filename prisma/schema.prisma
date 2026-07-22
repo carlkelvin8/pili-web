@@ -246,3 +246,8 @@ enum Courier {
   LALAMOVE
   FLASH_EXPRESS
 }
+
+model SiteSettings {
+  key   String @id
+  value Json
+}
