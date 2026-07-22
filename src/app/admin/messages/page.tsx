@@ -62,32 +62,27 @@ export default function AdminMessagesPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "Message" },
-        () => {
+        (payload) => {
           fetchUnreadCount();
           setRefreshKey((k) => k + 1);
 
           if ("Notification" in window && Notification.permission === "granted") {
-            fetch("/api/conversations", { credentials: "same-origin" })
-              .then((res) => {
-                if (!res.ok) return [];
-                return res.json();
-              })
-              .then((conversations) => {
-                if (!Array.isArray(conversations)) return;
-                const conv = conversations.find(
-                  (c: Record<string, unknown>) =>
-                    Array.isArray(c.messages) && c.messages.length > 0
-                );
-                if (conv) {
-                  const lastMsg = conv.messages[conv.messages.length - 1] as Record<string, unknown>;
+            const newMsg = payload.new as Record<string, unknown> | undefined;
+            const convId = newMsg?.conversationId as string | undefined;
+            if (convId) {
+              fetch(`/api/conversations/${convId}`, { credentials: "same-origin" })
+                .then((res) => res.ok ? res.json() : null)
+                .then((conv) => {
+                  if (!conv) return;
                   const customer = conv.customer as Record<string, unknown> | undefined;
+                  const content = (newMsg?.content as string) || "New message";
                   new Notification("New message received", {
-                    body: ((customer?.name as string) || "Customer") + ": " + ((lastMsg?.content as string) || "New message"),
+                    body: ((customer?.name as string) || "Customer") + ": " + content,
                     icon: "/logo.png",
                   });
-                }
-              })
-              .catch(() => {});
+                })
+                .catch(() => {});
+            }
           }
         }
       )
@@ -100,18 +95,14 @@ export default function AdminMessagesPage() {
 
   const fetchConversationInfo = useCallback(async (id: string) => {
     try {
-      const res = await fetch("/api/conversations", { credentials: "same-origin" });
+      const res = await fetch(`/api/conversations/${id}`, { credentials: "same-origin" });
       if (!res.ok) return;
-      const data = await res.json();
-      if (!Array.isArray(data)) return;
-      const conv = data.find((c: { id: string }) => c.id === id);
-      if (conv) {
-        setConversationInfo({
-          subject: conv.subject,
-          status: conv.status,
-          customer: conv.customer,
-        });
-      }
+      const conv = await res.json();
+      setConversationInfo({
+        subject: conv.subject,
+        status: conv.status,
+        customer: conv.customer,
+      });
     } catch {
       // silent
     }

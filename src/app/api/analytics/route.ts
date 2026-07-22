@@ -23,15 +23,14 @@ export async function GET(request: NextRequest) {
 
     const twelveMonthsAgo = new Date(now.getFullYear() - 1, now.getMonth(), 1);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
+    // Lightweight counts + targeted aggregations (no fetching all rows)
     const [
       totalConversations,
       totalMessages,
       statusCounts,
-      conversations12m,
       totalCustomers,
       newCustomersThisMonth,
       newCustomersLastMonth,
@@ -40,19 +39,28 @@ export async function GET(request: NextRequest) {
       conversationsLastMonth,
       messagesThisMonth,
       messagesLastMonth,
-      allConversations,
       recentMessages,
-      messages30d,
-      messages60d,
+      // Response rate: count conversations that have at least one admin reply
+      convsWithAdminReply,
+      // Top 8 customers by message count
+      topCustomersRaw,
+      // Avg response time: first admin reply - first customer message per conversation
+      avgResponseTimeRaw,
+      // Messages per month (12m) via aggregation
+      msgsPerMonthRaw,
+      // Messages 30d count for trend
+      messages30dCount,
+      messages60dCount,
+      // Daily messages (30d) via SQL
+      dailyMessagesRaw,
+      // Hourly distribution (30d) via SQL
+      hourlyRaw,
+      // Day of week distribution (30d) via SQL
+      dayOfWeekRaw,
     ] = await Promise.all([
       prisma.conversation.count(),
       prisma.message.count(),
       prisma.conversation.groupBy({ by: ["status"], _count: true }),
-      prisma.conversation.findMany({
-        where: { createdAt: { gte: twelveMonthsAgo } },
-        select: { createdAt: true },
-        orderBy: { createdAt: "asc" },
-      }),
       prisma.user.count({ where: { role: "CUSTOMER" } }),
       prisma.user.count({ where: { role: "CUSTOMER", createdAt: { gte: thisMonthStart } } }),
       prisma.user.count({ where: { role: "CUSTOMER", createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
@@ -61,39 +69,90 @@ export async function GET(request: NextRequest) {
       prisma.conversation.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
       prisma.message.count({ where: { createdAt: { gte: thisMonthStart } } }),
       prisma.message.count({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
-      prisma.conversation.findMany({
-        select: {
-          id: true,
-          subject: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-          customer: { select: { name: true, email: true } },
-          messages: {
-            select: { id: true, senderId: true, createdAt: true, sender: { select: { role: true } } },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-      }),
       prisma.message.findMany({
         take: 20,
         orderBy: { createdAt: "desc" },
         select: {
-          id: true,
-          content: true,
-          createdAt: true,
+          id: true, content: true, createdAt: true,
           sender: { select: { name: true, email: true, role: true } },
           conversation: { select: { id: true, subject: true } },
         },
       }),
-      prisma.message.findMany({
-        where: { createdAt: { gte: thirtyDaysAgo } },
-        select: { createdAt: true },
+      // Response rate: conversations with at least one admin message
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT c.id) as count
+        FROM "Conversation" c
+        INNER JOIN "Message" m ON m."conversationId" = c.id
+        INNER JOIN "User" u ON u.id = m."senderId"
+        WHERE u.role = 'ADMIN'
+      `,
+      // Top 8 customers by customer message count
+      prisma.$queryRaw<{ name: string; email: string; count: bigint }[]>`
+        SELECT u.name, u.email, COUNT(m.id) as count
+        FROM "Message" m
+        INNER JOIN "User" u ON u.id = m."senderId"
+        WHERE u.role = 'CUSTOMER'
+        GROUP BY u.id, u.name, u.email
+        ORDER BY count DESC
+        LIMIT 8
+      `,
+      // Avg response time: avg(first admin reply - first customer msg) per conversation
+      prisma.$queryRaw<[{ avg_ms: bigint | null }]>`
+        SELECT AVG(EXTRACT(EPOCH FROM (admin_first.reply_time - cust_first.msg_time)) * 1000)::bigint as avg_ms
+        FROM (
+          SELECT m."conversationId", MIN(m."createdAt") as msg_time
+          FROM "Message" m
+          INNER JOIN "User" u ON u.id = m."senderId"
+          WHERE u.role = 'CUSTOMER'
+          GROUP BY m."conversationId"
+        ) cust_first
+        INNER JOIN (
+          SELECT m."conversationId", MIN(m."createdAt") as reply_time
+          FROM "Message" m
+          INNER JOIN "User" u ON u.id = m."senderId"
+          WHERE u.role = 'ADMIN'
+          GROUP BY m."conversationId"
+        ) admin_first ON cust_first."conversationId" = admin_first."conversationId"
+        WHERE admin_first.reply_time > cust_first.msg_time
+      `,
+      // Messages per month (12m) via date truncation
+      prisma.$queryRaw<{ month: string; count: bigint }[]>`
+        SELECT TO_CHAR("createdAt", 'YYYY-MM') as month, COUNT(*) as count
+        FROM "Message"
+        WHERE "createdAt" >= ${twelveMonthsAgo}
+        GROUP BY month
+        ORDER BY month ASC
+      `,
+      // Messages 30d count
+      prisma.message.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      // Messages 30-60d count (prev 30d for trend)
+      prisma.message.count({
+        where: { createdAt: { gte: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000), lt: thirtyDaysAgo } },
       }),
-      prisma.message.findMany({
-        where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
-        select: { createdAt: true },
-      }),
+      // Daily messages (30d) via SQL
+      prisma.$queryRaw<{ date: string; count: bigint }[]>`
+        SELECT TO_CHAR("createdAt", 'YYYY-MM-DD') as date, COUNT(*) as count
+        FROM "Message"
+        WHERE "createdAt" >= ${thirtyDaysAgo}
+        GROUP BY date
+        ORDER BY date ASC
+      `,
+      // Hourly distribution (30d) via SQL
+      prisma.$queryRaw<{ hour: number; count: bigint }[]>`
+        SELECT EXTRACT(HOUR FROM "createdAt")::int as hour, COUNT(*) as count
+        FROM "Message"
+        WHERE "createdAt" >= ${thirtyDaysAgo}
+        GROUP BY hour
+        ORDER BY hour ASC
+      `,
+      // Day of week distribution (30d) via SQL
+      prisma.$queryRaw<{ dow: number; count: bigint }[]>`
+        SELECT EXTRACT(DOW FROM "createdAt")::int as dow, COUNT(*) as count
+        FROM "Message"
+        WHERE "createdAt" >= ${thirtyDaysAgo}
+        GROUP BY dow
+        ORDER BY dow ASC
+      `,
     ]);
 
     // Monthly inquiries (12 months)
@@ -105,19 +164,9 @@ export async function GET(request: NextRequest) {
       monthlyData[key] = { month: `${monthNames[d.getMonth()]} ${String(d.getMonth() + 1).padStart(2, "0")}`, inquiries: 0, messages: 0 };
     }
 
-    for (const c of conversations12m) {
-      const key = `${c.createdAt.getFullYear()}-${String(c.createdAt.getMonth() + 1).padStart(2, "0")}`;
-      if (monthlyData[key]) monthlyData[key].inquiries++;
-    }
-
-    // Messages per month
-    const msgs12m = await prisma.message.findMany({
-      where: { createdAt: { gte: twelveMonthsAgo } },
-      select: { createdAt: true },
-    });
-    for (const m of msgs12m) {
-      const key = `${m.createdAt.getFullYear()}-${String(m.createdAt.getMonth() + 1).padStart(2, "0")}`;
-      if (monthlyData[key]) monthlyData[key].messages++;
+    // Populate messages per month from SQL aggregation
+    for (const row of msgsPerMonthRaw) {
+      if (monthlyData[row.month]) monthlyData[row.month].messages = Number(row.count);
     }
 
     // Status breakdown
@@ -130,65 +179,46 @@ export async function GET(request: NextRequest) {
       return Math.round(((current - previous) / previous) * 100);
     }
 
-    // Response rate: conversations with at least one admin message
-    const conversationsWithAdminReply = allConversations.filter((c) =>
-      c.messages.some((m) => m.sender.role === "ADMIN")
-    ).length;
+    // Response rate
+    const conversationsWithAdminReply = Number(convsWithAdminReply[0]?.count ?? 0);
     const responseRate = totalConversations > 0 ? Math.round((conversationsWithAdminReply / totalConversations) * 100) : 0;
 
     // Avg messages per conversation
     const avgMessagesPerConv = totalConversations > 0 ? (totalMessages / totalConversations).toFixed(1) : "0";
 
-    // Daily messages (last 30 days)
-    const dailyMessages: Record<string, number> = {};
+    // Daily messages (last 30 days) — fill gaps
+    const dailyMap = new Map(dailyMessagesRaw.map((r) => [r.date, Number(r.count)]));
+    const dailyMessages: { date: string; count: number }[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const key = d.toISOString().split("T")[0];
-      dailyMessages[key] = 0;
+      dailyMessages.push({
+        date: `${monthNames[d.getMonth()]} ${d.getDate()}`,
+        count: dailyMap.get(key) ?? 0,
+      });
     }
-    for (const m of messages30d) {
-      const key = m.createdAt.toISOString().split("T")[0];
-      if (dailyMessages[key] !== undefined) dailyMessages[key]++;
-    }
-    const dailyMessagesArr = Object.entries(dailyMessages).map(([date, count]) => {
-      const d = new Date(date + "T00:00:00");
-      return { date: `${monthNames[d.getMonth()]} ${d.getDate()}`, count };
-    });
 
     // Day of week distribution
     const dayOfWeekNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
-    for (const m of messages30d) dayOfWeekCounts[m.createdAt.getDay()]++;
-    const dayOfWeekData = dayOfWeekNames.map((name, i) => ({ day: name, messages: dayOfWeekCounts[i] }));
+    const dowMap = new Map(dayOfWeekRaw.map((r) => [r.dow, Number(r.count)]));
+    const dayOfWeekData = dayOfWeekNames.map((name, i) => ({ day: name, messages: dowMap.get(i) ?? 0 }));
 
-    // Hour of day distribution
-    const hourCounts = new Array(24).fill(0);
-    for (const m of messages30d) hourCounts[m.createdAt.getHours()]++;
-    const hourlyData = hourCounts.map((count, hour) => ({
-      hour: `${String(hour).padStart(2, "0")}:00`,
-      messages: count,
+    // Hourly distribution
+    const hourMap = new Map(hourlyRaw.map((r) => [r.hour, Number(r.count)]));
+    const hourlyData = Array.from({ length: 24 }, (_, h) => ({
+      hour: `${String(h).padStart(2, "0")}:00`,
+      messages: hourMap.get(h) ?? 0,
     }));
 
-    // Top customers by message count
-    const customerMessageCounts: Record<string, { name: string; email: string; count: number }> = {};
-    for (const conv of allConversations) {
-      const custMsgs = conv.messages.filter((m) => m.sender.role === "CUSTOMER").length;
-      if (custMsgs > 0) {
-        const key = conv.customer.email;
-        if (!customerMessageCounts[key]) {
-          customerMessageCounts[key] = { name: conv.customer.name || "Unknown", email: conv.customer.email, count: 0 };
-        }
-        customerMessageCounts[key].count += custMsgs;
-      }
-    }
-    const topCustomers = Object.values(customerMessageCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
+    // Top customers
+    const topCustomers = topCustomersRaw.map((c) => ({
+      name: c.name || "Unknown",
+      email: c.email,
+      count: Number(c.count),
+    }));
 
-    // Message volume (30d vs prev 30d)
-    const messages30dCount = messages30d.length;
-    const messages60dPrevCount = messages60d.length;
-    const msgTrend = trend(messages30dCount, messages60dPrevCount);
+    // Message volume trend
+    const msgTrend = trend(messages30dCount, messages60dCount);
 
     // Recent activity
     const recentActivity = recentMessages.map((m) => ({
@@ -201,32 +231,18 @@ export async function GET(request: NextRequest) {
       conversationId: m.conversation.id,
     }));
 
-    // Conversions: conversations that became closed
+    // Conversions
     const closedCount = statusMap["CLOSED"] || 0;
     const conversionRate = totalConversations > 0 ? Math.round((closedCount / totalConversations) * 100) : 0;
 
     // Peak hour
-    const peakHourIdx = hourCounts.indexOf(Math.max(...hourCounts));
-    const peakHour = `${peakHourIdx}:00–${peakHourIdx + 1}:00`;
+    const peakHourObj = hourlyData.reduce((max, h) => h.messages > max.messages ? h : max, hourlyData[0]);
+    const peakHourNum = parseInt(peakHourObj.hour, 10);
+    const peakHour = `${peakHourNum}:00–${peakHourNum + 1}:00`;
 
-    // Response time tracking: avg time to first admin reply
-    let totalResponseTimeMs = 0;
-    let conversationsWithResponse = 0;
-    for (const conv of allConversations) {
-      const customerMsgs = conv.messages.filter((m) => m.sender.role === "CUSTOMER");
-      const adminMsgs = conv.messages.filter((m) => m.sender.role === "ADMIN");
-      if (customerMsgs.length > 0 && adminMsgs.length > 0) {
-        const firstCustomerMsg = customerMsgs[0];
-        const firstAdminReply = adminMsgs[0];
-        if (firstAdminReply.createdAt > firstCustomerMsg.createdAt) {
-          totalResponseTimeMs += firstAdminReply.createdAt.getTime() - firstCustomerMsg.createdAt.getTime();
-          conversationsWithResponse++;
-        }
-      }
-    }
-    const avgResponseTimeMinutes = conversationsWithResponse > 0
-      ? Math.round(totalResponseTimeMs / conversationsWithResponse / 60000)
-      : 0;
+    // Avg response time
+    const avgResponseTimeMs = Number(avgResponseTimeRaw[0]?.avg_ms ?? 0);
+    const avgResponseTimeMinutes = avgResponseTimeMs > 0 ? Math.round(avgResponseTimeMs / 60000) : 0;
     const responseTimeFormatted = avgResponseTimeMinutes < 60
       ? `${avgResponseTimeMinutes}m`
       : `${Math.floor(avgResponseTimeMinutes / 60)}h ${avgResponseTimeMinutes % 60}m`;
@@ -250,7 +266,7 @@ export async function GET(request: NextRequest) {
       newCustomersLastMonth,
       customersTrend: trend(newCustomersThisMonth, newCustomersLastMonth),
       unreadTrend: msgTrend,
-      dailyMessages: dailyMessagesArr,
+      dailyMessages,
       dayOfWeekData,
       hourlyData,
       topCustomers,
@@ -259,7 +275,7 @@ export async function GET(request: NextRequest) {
       peakHour,
       avgResponseTimeMinutes,
       responseTimeFormatted,
-      conversationsWithResponse,
+      conversationsWithResponse: conversationsWithAdminReply,
     });
   } catch {
     return NextResponse.json(

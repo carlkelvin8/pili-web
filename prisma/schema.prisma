@@ -37,6 +37,10 @@ model Conversation {
   updatedAt  DateTime  @updatedAt
   messages   Message[]
   notes      ConversationNote[]
+
+  @@index([customerId])
+  @@index([updatedAt(sort: Desc)])
+  @@index([status])
 }
 
 enum Status {
@@ -66,6 +70,10 @@ model Message {
   isRead         Boolean       @default(false)
   createdAt      DateTime      @default(now())
   reactions      Reaction[]
+
+  @@index([conversationId])
+  @@index([isRead])
+  @@index([conversationId, isRead])
 }
 
 model Reaction {
@@ -78,12 +86,20 @@ model Reaction {
   createdAt DateTime @default(now())
 
   @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
 model PageContent {
-  section   String   @id
-  content   Json
-  updatedAt DateTime @updatedAt
+  section     String        @id
+  content     Json
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  updatedAt   DateTime      @updatedAt
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
 }
 
 model QuickReply {
@@ -112,6 +128,8 @@ model ConversationNote {
   isInternal     Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  @@index([conversationId])
 }
 
 model CustomerTag {

@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get("conversationId");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 100);
+    const cursor = searchParams.get("cursor");
 
     if (!conversationId) {
       return NextResponse.json(
@@ -23,12 +25,17 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: "asc" },
+      take: limit,
+      ...(cursor
+        ? { skip: 1, cursor: { id: cursor } }
+        : {}),
     });
 
-    await prisma.message.updateMany({
+    // Mark as read in background — don't block the response
+    prisma.message.updateMany({
       where: { conversationId, isRead: false },
       data: { isRead: true },
-    });
+    }).catch(() => {});
 
     return NextResponse.json(messages);
   } catch {
@@ -96,10 +103,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await prisma.conversation.update({
+    // Fire-and-forget: update conversation timestamp for sort ordering
+    prisma.conversation.update({
       where: { id: conversationId },
       data: { updatedAt: new Date() },
-    });
+    }).catch(() => {});
 
     return NextResponse.json(message, { status: 201 });
   } catch {

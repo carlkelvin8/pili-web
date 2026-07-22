@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState, useCallback } from "react";
 
 interface Conversation {
   id: string;
@@ -34,7 +33,6 @@ export default function ConversationList({
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const supabaseRef = useRef(createClient());
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -62,24 +60,6 @@ export default function ConversationList({
   useEffect(() => {
     fetchConversations();
   }, [refreshKey, fetchConversations]);
-
-  useEffect(() => {
-    const sb = supabaseRef.current;
-    const channel = sb
-      .channel("conversation-updates")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "Message" },
-        () => {
-          fetchConversations();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      sb.removeChannel(channel);
-    };
-  }, [fetchConversations]);
 
   const filtered = conversations
     .filter((c) => filter === "ALL" || c.status === filter)

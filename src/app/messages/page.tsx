@@ -6,16 +6,6 @@ import ConversationList from "@/components/messaging/ConversationList";
 import MessageThread from "@/components/messaging/MessageThread";
 import NewConversationModal from "@/components/messaging/NewConversationModal";
 
-interface Conversation {
-  id: string;
-  subject: string;
-  status: string;
-  messages: {
-    content: string;
-    sender: { name: string; role: string };
-  }[];
-}
-
 export default function CustomerMessagesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [customerEmail, setCustomerEmail] = useState("");
@@ -27,6 +17,10 @@ export default function CustomerMessagesPage() {
   } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     try {
@@ -46,14 +40,14 @@ export default function CustomerMessagesPage() {
 
   const fetchConversationInfo = useCallback(
     async (id: string) => {
-      const res = await fetch(`/api/conversations?email=${customerEmail}`);
-      const data = await res.json();
-      const conv = data.find((c: Conversation) => c.id === id);
-      if (conv) {
+      try {
+        const res = await fetch(`/api/conversations/${id}`);
+        if (!res.ok) return;
+        const conv = await res.json();
         setConversationInfo({ subject: conv.subject, status: conv.status });
-      }
+      } catch { /* silent */ }
     },
-    [customerEmail]
+    []
   );
 
   useEffect(() => {
