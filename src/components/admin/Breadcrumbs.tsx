@@ -8,7 +8,6 @@ const segmentLabels: Record<string, string> = {
   analytics: "Analytics",
   messages: "Messages",
   customers: "Customers",
-  media: "Media Library",
   cms: "CMS Editor",
   activity: "Activity Log",
   settings: "Settings",

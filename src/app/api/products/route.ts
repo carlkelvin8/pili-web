@@ -13,16 +13,21 @@ async function requireAdmin() {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAdmin();
-    if ("error" in auth) return auth.error;
-
     const { searchParams } = new URL(request.url);
+    const publicOnly = searchParams.get("active") === "true";
+
+    if (!publicOnly) {
+      const auth = await requireAdmin();
+      if ("error" in auth) return auth.error;
+    }
+
     const search = searchParams.get("search") || "";
     const category = searchParams.get("category") || "";
     const lowStock = searchParams.get("lowStock") === "true";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
+    if (publicOnly) where.isActive = true;
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
