@@ -13,6 +13,7 @@ const segmentLabels: Record<string, string> = {
   activity: "Activity Log",
   settings: "Settings",
   users: "User Management",
+  inventory: "Inventory",
 };
 
 export default function Breadcrumbs() {
