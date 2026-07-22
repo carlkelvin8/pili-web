@@ -21,7 +21,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, sku, description, price, cost, stock, lowStockAt, category, isActive } = body;
+    const { name, sku, description, image, price, cost, stock, lowStockAt, category, isActive } = body;
 
     const existing = await prisma.product.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Product not found." }, { status: 404 });
@@ -36,6 +36,7 @@ export async function PATCH(
     if (name !== undefined) data.name = name.trim();
     if (sku !== undefined) data.sku = sku.trim().toUpperCase();
     if (description !== undefined) data.description = description?.trim() || null;
+    if (image !== undefined) data.image = image?.trim() || null;
     if (price !== undefined) data.price = parseFloat(price) || 0;
     if (cost !== undefined) data.cost = parseFloat(cost) || 0;
     if (stock !== undefined) data.stock = parseInt(stock) || 0;

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     if ("error" in auth) return auth.error;
 
     const body = await request.json();
-    const { name, sku, description, price, cost, stock, lowStockAt, category } = body;
+    const { name, sku, description, image, price, cost, stock, lowStockAt, category } = body;
 
     if (!name?.trim()) return NextResponse.json({ error: "Product name is required." }, { status: 400 });
     if (!sku?.trim()) return NextResponse.json({ error: "SKU is required." }, { status: 400 });
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         sku: sku.trim().toUpperCase(),
         description: description?.trim() || null,
+        image: image?.trim() || null,
         price: parseFloat(price) || 0,
         cost: parseFloat(cost) || 0,
         stock: parseInt(stock) || 0,

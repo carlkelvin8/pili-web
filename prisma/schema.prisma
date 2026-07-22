@@ -150,6 +150,7 @@ model Product {
   name        String
   sku         String   @unique
   description String?
+  image       String?
   price       Float    @default(0)
   cost        Float    @default(0)
   stock       Int      @default(0)

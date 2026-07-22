@@ -7,6 +7,7 @@ interface Product {
   name: string;
   sku: string;
   description: string | null;
+  image: string | null;
   price: number;
   cost: number;
   stock: number;
@@ -17,7 +18,7 @@ interface Product {
   updatedAt: string;
 }
 
-const EMPTY_FORM = { name: "", sku: "", description: "", price: "", cost: "", stock: "", lowStockAt: "5", category: "" };
+const EMPTY_FORM = { name: "", sku: "", description: "", image: "", price: "", cost: "", stock: "", lowStockAt: "5", category: "" };
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -76,6 +77,7 @@ export default function InventoryPage() {
       name: p.name,
       sku: p.sku,
       description: p.description || "",
+      image: p.image || "",
       price: String(p.price),
       cost: String(p.cost),
       stock: String(p.stock),
@@ -363,6 +365,17 @@ export default function InventoryPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Alert</label>
                   <input type="number" min="0" value={form.lowStockAt} onChange={(e) => setForm({ ...form, lowStockAt: e.target.value })}
                     className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-transparent outline-none" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                  <input type="url" value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })}
+                    placeholder="https://... or /products/..."
+                    className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-transparent outline-none" />
+                  {form.image && (
+                    <div className="mt-2 w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                      <img src={form.image} alt="Preview" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
