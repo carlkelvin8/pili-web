@@ -19,6 +19,7 @@ model User {
   messages      Message[]      @relation("SenderMessages")
   reactions     Reaction[]
   tags          CustomerTag[]
+  orders        Order[]
 }
 
 enum Role {
@@ -161,6 +162,7 @@ model Product {
   @@index([sku])
   @@index([category])
   @@index([isActive])
+  orderItems OrderItem[]
 }
 
 model FAQ {
@@ -174,4 +176,73 @@ model FAQ {
 
   @@index([isActive])
   @@index([sortOrder])
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  orderNumber     String      @unique
+  status          OrderStatus @default(PENDING)
+  customerId      String      @db.Uuid
+  customer        User        @relation(fields: [customerId], references: [id])
+  shippingName    String
+  shippingPhone   String
+  shippingAddress String
+  shippingCity    String?
+  shippingProvince String?
+  shippingZip     String?
+  notes           String?
+  subtotal        Float       @default(0)
+  shippingFee     Float       @default(0)
+  totalAmount     Float       @default(0)
+  trackingNumber  String?
+  courier         Courier?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt(sort: Desc)])
+}
+
+model OrderItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id])
+  name      String
+  sku       String
+  price     Float
+  quantity  Int
+  total     Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  RETURNED
+}
+
+enum Courier {
+  LBC
+  JT_EXPRESS
+  GOGOXPRESS
+  LALAMOVE
+  FLASH_EXPRESS
 }
