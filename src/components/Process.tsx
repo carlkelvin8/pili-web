@@ -1,9 +1,9 @@
 const steps = [
   {
     step: "01",
-    title: "Consultation",
+    title: "Technical Consultation",
     description:
-      "We start by understanding your specific application, environment, and performance requirements.",
+      "We understand your application, substrate, operating conditions, and performance requirements to define the optimal solution.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -12,9 +12,9 @@ const steps = [
   },
   {
     step: "02",
-    title: "Formulation",
+    title: "Custom Formulation",
     description:
-      "Our chemists develop a custom formulation tailored to your substrate, temperature range, and durability needs.",
+      "Our technical team formulate and optimize a bio-based solution specifically engineered for your application.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -23,9 +23,9 @@ const steps = [
   },
   {
     step: "03",
-    title: "Testing",
+    title: "Testing & Validation",
     description:
-      "Rigorous lab testing and real-world trials ensure the product meets your exact performance standards.",
+      "Comprehensive laboratory and application testing to verify performance, ensure product reliability, and confirm compliance with your exact requirements.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -34,9 +34,9 @@ const steps = [
   },
   {
     step: "04",
-    title: "Production & Delivery",
+    title: "Commercial Production",
     description:
-      "Scaled manufacturing with quality control at every stage. Delivered on schedule, ready for your production line.",
+      "Following validation, we manufacture at scale under rigorous quality control and deliver products ready for industrial deployment.",
     icon: (
       <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -54,10 +54,10 @@ export default function Process() {
             How We Work
           </span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[var(--color-primary)]">
-            From Concept to Custom Product
+            From Technical Challenge to Commercial-Ready Solution
           </h2>
           <p className="mt-4 text-lg text-gray-600">
-            Our streamlined process ensures you get the exact bonding solution your application demands.
+            We collaborate with businesses to develop customized, bio-based adhesive and sealant technologies that combine performance, sustainability, and scalable manufacturing.
           </p>
         </div>
 
