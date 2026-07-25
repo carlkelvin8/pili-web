@@ -65,7 +65,7 @@ export default function Process() {
           {/* Connection line */}
           <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[var(--color-primary-light)]/30 to-transparent -translate-y-1/2" />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 stagger-children">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8 stagger-children">
             {steps.map((step, index) => (
               <div key={step.step} className="relative group">
                 <div className="bg-[var(--color-light)] rounded-2xl p-6 border border-gray-100 hover:border-[var(--color-primary-light)]/40 hover:shadow-lg transition-all duration-300 h-full">

@@ -66,7 +66,7 @@ export default function Stats() {
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 lg:gap-12">
           {stats.map((stat) => (
             <StatItem key={stat.label} stat={stat} visible={visible} />
           ))}

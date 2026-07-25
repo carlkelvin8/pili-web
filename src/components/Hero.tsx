@@ -75,12 +75,12 @@ export default function Hero({ data }: { data?: HeroData | null }) {
           <div key={i} className="absolute w-2 h-2 rounded-full bg-[var(--color-primary-light)]/40 animate-particle" style={{ left: `${15 + i * 15}%`, top: `${60 + (i % 3) * 10}%`, animationDelay: `${i * 0.8}s`, animationDuration: `${3 + i * 0.5}s` }} />
         ))}
       </div>
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 md:px-8 text-center">
         <div className="animate-fade-in-scale inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
           <span className="w-2 h-2 rounded-full bg-[var(--color-primary-light)] animate-pulse" />
           <span className="text-sm text-gray-200 font-medium">{d.badge}</span>
         </div>
-        <h1 className="animate-slide-up text-4xl sm:text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] tracking-tight">
+        <h1 className="animate-slide-up text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white leading-[1.1] tracking-tight">
           {d.heading}
           <br />
           <span className="relative inline-block">
@@ -93,7 +93,7 @@ export default function Hero({ data }: { data?: HeroData | null }) {
         <p className="animate-slide-up-delayed mt-6 sm:mt-8 text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed px-2">
           {d.subheading}
         </p>
-        <div className="animate-slide-up-more-delayed mt-10 sm:mt-12 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2">
+        <div className="animate-slide-up-more-delayed mt-10 sm:mt-12 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4 md:px-6">
           <a href={d.ctaPrimaryLink} className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[var(--color-primary-light)] text-[var(--color-dark)] font-semibold rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary-light)]/25 transition-all duration-300 hover:-translate-y-0.5 text-base sm:text-lg overflow-hidden">
             <span className="relative z-10">{d.ctaPrimary}</span>
             <svg className="relative z-10 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">

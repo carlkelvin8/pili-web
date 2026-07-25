@@ -50,12 +50,12 @@ export default function Products({ data }: { data?: ProductsData | null }) {
           {d.items.map((product, index) => (
             <div
               key={product.name}
-              className={`flex flex-col ${index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"} gap-8 lg:gap-16 items-center ${index % 2 === 0 ? "scroll-reveal-left" : "scroll-reveal-right"}`}
+              className={`flex flex-col ${index % 2 === 0 ? "md:flex-row lg:flex-row" : "md:flex-row-reverse lg:flex-row-reverse"} gap-8 md:gap-12 lg:gap-16 items-center ${index % 2 === 0 ? "scroll-reveal-left" : "scroll-reveal-right"}`}
             >
-              <div className="w-full lg:w-1/2">
+              <div className="w-full md:w-1/2">
                 <div className="relative group">
                   <div className="absolute -inset-4 bg-gradient-to-r from-[var(--color-primary-light)]/20 to-[var(--color-accent)]/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
-                  <div className="relative bg-white rounded-2xl p-2 sm:p-4 shadow-sm border border-gray-100 group-hover:shadow-xl transition-shadow duration-500">
+                  <div className="relative bg-white rounded-2xl p-2 sm:p-4 md:p-6 shadow-sm border border-gray-100 group-hover:shadow-xl transition-shadow duration-500">
                     <Image
                       src={product.image}
                       alt={product.name}
@@ -67,7 +67,7 @@ export default function Products({ data }: { data?: ProductsData | null }) {
                 </div>
               </div>
 
-              <div className="w-full lg:w-1/2">
+              <div className="w-full md:w-1/2">
                 <h3 className="text-2xl sm:text-3xl font-bold text-[var(--color-primary)]">
                   {product.name}
                 </h3>

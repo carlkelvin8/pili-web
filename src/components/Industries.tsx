@@ -90,7 +90,7 @@ export default function Industries() {
           <span className="inline-block px-4 py-1.5 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-sm font-semibold mb-4">
             Industries We Serve
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-primary)]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[var(--color-primary)]">
             Tailored for Your Sector
           </h2>
           <p className="mt-4 text-lg text-gray-600">

@@ -46,7 +46,7 @@ export default function WhyChooseUs() {
     <section id="why-us" className="py-20 md:py-28 bg-gradient-to-b from-[var(--color-dark)] to-[var(--color-primary)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto scroll-reveal">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">
             Why Choose Pili AdheSeal?
           </h2>
           <p className="mt-4 text-lg text-gray-300">

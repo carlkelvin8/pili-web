@@ -2,6 +2,10 @@ import Header from "@/components/Header";
 import Hero from "@/components/Hero";
 import About from "@/components/About";
 import Products from "@/components/Products";
+import Process from "@/components/Process";
+import Industries from "@/components/Industries";
+import WhyChooseUs from "@/components/WhyChooseUs";
+import Testimonials from "@/components/Testimonials";
 import News from "@/components/News";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
@@ -23,6 +27,10 @@ export default async function Home() {
       <Hero data={cms.hero} />
       <About data={cms.about} />
       <Products data={cms.products} />
+      <Process />
+      <Industries />
+      <WhyChooseUs />
+      <Testimonials />
       <News data={cms.news} />
       <Contact data={cms.contact} />
       <Footer data={cms.footer} />
