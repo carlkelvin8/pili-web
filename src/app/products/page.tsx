@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -309,9 +308,9 @@ export default function ProductsPage() {
         {/* Products */}
         <div className="mt-8">
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-black/[0.03]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="bg-white animate-pulse">
+                <div key={i} className="bg-white animate-pulse border border-black/[0.06]">
                   <div className="aspect-square bg-gray-50" />
                   <div className="p-6 space-y-3">
                     <div className="h-3 bg-gray-100 w-1/3" />
@@ -337,7 +336,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-black/[0.03]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} onAdd={addToCart} addedId={addedId} onQuickView={setSelectedProduct} />
                 ))}
@@ -409,7 +408,7 @@ function ProductCard({ product, onAdd, addedId, onQuickView }: {
   const isLow = product.stock > 0 && product.stock <= 5;
 
   return (
-    <div className="group bg-white flex flex-col h-full">
+    <div className="group bg-white flex flex-col h-full border border-black/[0.06]">
       <div className="relative aspect-square bg-[#f8faf9] flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={() => onQuickView(product)}>
         {product.image ? (
