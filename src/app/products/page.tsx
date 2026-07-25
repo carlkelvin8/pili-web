@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -137,66 +138,69 @@ export default function ProductsPage() {
 
       {/* ── Hero ── */}
       {!loading && heroProduct && (
-        <section className="relative bg-[#0a2e2e] overflow-hidden min-h-[85vh] flex items-center mt-14">
-          <div className="absolute inset-0">
-            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[#3ecbac]/[0.04] rounded-full blur-[300px]" />
-            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-white/[0.02] rounded-full blur-[250px]" />
+        <section className="relative bg-[#0a2e2e] overflow-hidden mt-14">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 right-0 w-[700px] h-[700px] bg-[#3ecbac]/[0.05] rounded-full blur-[300px]" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[250px]" />
             <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }} />
           </div>
 
-          <div className="max-w-[1400px] mx-auto px-5 sm:px-8 w-full relative z-10">
-            <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-              <div className="text-white">
+          <div className="max-w-[1400px] mx-auto px-5 sm:px-8 relative z-10">
+            <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16 min-h-[60vh] lg:min-h-[70vh] py-16 sm:py-20">
+              {/* Left: Product Image — always centered */}
+              <div className="w-full lg:w-1/2 flex justify-center order-2 lg:order-1">
+                <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-[380px] lg:h-[380px]">
+                  <div className="absolute inset-12 bg-[#3ecbac]/[0.08] rounded-full blur-[60px]" />
+                  <div className="absolute inset-0 border border-white/[0.06]" />
+                  {heroProduct.image ? (
+                    <Image src={heroProduct.image} alt={heroProduct.name} fill priority
+                      className="object-contain p-8 relative z-10 drop-shadow-2xl" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <svg className="w-20 h-20 text-white/[0.06]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Text */}
+              <div className="w-full lg:w-1/2 text-white order-1 lg:order-2">
                 {heroProduct.category && (
-                  <span className="inline-block text-[11px] tracking-[0.3em] uppercase text-white/30 font-medium mb-6">{heroProduct.category}</span>
+                  <span className="inline-block text-[11px] tracking-[0.3em] uppercase text-white/30 font-medium mb-5">{heroProduct.category}</span>
                 )}
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[0.95] tracking-tight">
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.0] tracking-tight">
                   {heroProduct.name}
                 </h1>
                 {heroProduct.description && (
-                  <p className="mt-8 text-lg text-white/40 leading-relaxed max-w-md">{heroProduct.description}</p>
+                  <p className="mt-6 text-base text-white/40 leading-relaxed max-w-md">{heroProduct.description}</p>
                 )}
-                <div className="mt-10 flex items-baseline gap-5">
-                  <span className="text-4xl font-bold text-[#3ecbac]">{formatCurrency(heroProduct.price)}</span>
-                  <span className={`text-xs font-medium tracking-wide ${heroProduct.stock > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                <div className="mt-8 flex items-baseline gap-4">
+                  <span className="text-3xl sm:text-4xl font-bold text-[#3ecbac]">{formatCurrency(heroProduct.price)}</span>
+                  <span className={`text-[11px] font-medium tracking-wide ${heroProduct.stock > 0 ? "text-emerald-400" : "text-red-400"}`}>
                     {heroProduct.stock > 0 ? "In Stock" : "Sold Out"}
                   </span>
                 </div>
-                <div className="mt-12 flex gap-4">
+                <div className="mt-10 flex flex-wrap gap-3">
                   <button onClick={() => addToCart(heroProduct)} disabled={heroProduct.stock === 0}
-                    className="px-10 py-4 bg-[#3ecbac] text-[#0a2e2e] text-[13px] font-bold tracking-wide rounded-none hover:bg-[#3ecbac]/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                    className="px-8 py-3.5 bg-[#3ecbac] text-[#0a2e2e] text-[12px] font-bold tracking-wide hover:bg-[#3ecbac]/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
                     Add to Cart
                   </button>
                   <button onClick={() => setSelectedProduct(heroProduct)}
-                    className="px-10 py-4 border border-white/15 text-white text-[13px] font-medium tracking-wide rounded-none hover:bg-white/5 transition-all">
+                    className="px-8 py-3.5 border border-white/15 text-white text-[12px] font-medium tracking-wide hover:bg-white/5 transition-all">
                     Details
                   </button>
                 </div>
+                {/* Dots */}
                 {products.length > 1 && (
-                  <div className="mt-20 flex gap-2">
+                  <div className="mt-16 flex gap-2">
                     {products.slice(0, Math.min(products.length, 10)).map((_, i) => (
                       <button key={i} onClick={() => setHeroIdx(i)}
                         className={`h-[2px] transition-all duration-700 ${i === heroIdx ? "w-10 bg-[#3ecbac]" : "w-4 bg-white/15 hover:bg-white/30"}`} />
                     ))}
                   </div>
                 )}
-              </div>
-
-              <div className="relative flex justify-center lg:justify-end">
-                <div className="relative w-80 h-80 sm:w-[450px] sm:h-[450px]">
-                  <div className="absolute inset-16 bg-[#3ecbac]/[0.06] rounded-full blur-[80px]" />
-                  <div className="absolute inset-0 border border-white/[0.04]" />
-                  {heroProduct.image ? (
-                    <Image src={heroProduct.image} alt={heroProduct.name} fill priority
-                      className="object-contain p-12 relative z-10 drop-shadow-2xl" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <svg className="w-24 h-24 text-white/[0.06]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={0.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -333,7 +337,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-black/[0.03]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-black/[0.03]">
                 {visibleProducts.map((product) => (
                   <ProductCard key={product.id} product={product} onAdd={addToCart} addedId={addedId} onQuickView={setSelectedProduct} />
                 ))}
@@ -405,7 +409,7 @@ function ProductCard({ product, onAdd, addedId, onQuickView }: {
   const isLow = product.stock > 0 && product.stock <= 5;
 
   return (
-    <div className="group bg-white">
+    <div className="group bg-white flex flex-col h-full">
       <div className="relative aspect-square bg-[#f8faf9] flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={() => onQuickView(product)}>
         {product.image ? (
@@ -444,20 +448,22 @@ function ProductCard({ product, onAdd, addedId, onQuickView }: {
         </div>
       </div>
 
-      <div className="p-5 sm:p-6">
+      <div className="p-5 sm:p-6 flex flex-col flex-1">
         <p className="text-[10px] text-gray-300 font-mono tracking-wider mb-2">{product.sku}</p>
         <h3 className="text-[15px] font-bold text-[#0a2e2e] group-hover:text-[#3ecbac] transition-colors leading-snug line-clamp-1">
           {product.name}
         </h3>
-        {product.description && (
-          <p className="text-[12px] text-gray-400 mt-2 line-clamp-2 leading-relaxed">{product.description}</p>
+        {product.description ? (
+          <p className="text-[12px] text-gray-400 mt-2 line-clamp-2 leading-relaxed flex-1">{product.description}</p>
+        ) : (
+          <div className="flex-1" />
         )}
-        <div className="flex items-end justify-between mt-5">
+        <div className="flex items-end justify-between mt-5 pt-4 border-t border-black/[0.04]">
           <p className="text-lg font-bold text-[#0a2e2e]">{formatCurrency(product.price)}</p>
           {!isOut && <p className="text-[10px] text-gray-400 tracking-wide">{product.stock} available</p>}
         </div>
         <button onClick={(e) => { e.stopPropagation(); onAdd(product); }} disabled={isOut}
-          className={`w-full mt-5 py-3.5 text-[11px] tracking-[0.15em] uppercase font-bold transition-all duration-300 ${
+          className={`w-full mt-4 py-3 text-[11px] tracking-[0.15em] uppercase font-bold transition-all duration-300 ${
             isAdded ? "bg-[#3ecbac] text-[#0a2e2e]" :
             isOut ? "bg-gray-50 text-gray-300 cursor-not-allowed border border-black/5" :
             "bg-[#0a2e2e] text-white hover:bg-[#3ecbac] hover:text-[#0a2e2e]"
