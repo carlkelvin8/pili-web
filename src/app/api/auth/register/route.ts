@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, name } = body;
+    const { email, name, role } = body;
 
     if (!email || !name) {
       return NextResponse.json({ error: "Please provide your name and email." }, { status: 400 });
@@ -21,17 +21,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
     }
 
+    const userRole = role === "CUSTOMER" ? "CUSTOMER" : "ADMIN";
+
     const existingUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (existingUser) {
       const updatedUser = await prisma.user.update({
         where: { id: user.id },
-        data: { role: "ADMIN", name },
+        data: { role: userRole, name },
       });
       return NextResponse.json(updatedUser);
     }
 
     const newUser = await prisma.user.create({
-      data: { id: user.id, email, name, role: "ADMIN" },
+      data: { id: user.id, email, name, role: userRole },
     });
 
     return NextResponse.json(newUser, { status: 201 });
