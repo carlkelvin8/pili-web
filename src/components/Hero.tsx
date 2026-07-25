@@ -80,7 +80,7 @@ export default function Hero({ data }: { data?: HeroData | null }) {
           <span className="w-2 h-2 rounded-full bg-[var(--color-primary-light)] animate-pulse" />
           <span className="text-sm text-gray-200 font-medium">{d.badge}</span>
         </div>
-        <h1 className="animate-slide-up text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] tracking-tight">
+        <h1 className="animate-slide-up text-4xl sm:text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] tracking-tight">
           {d.heading}
           <br />
           <span className="relative inline-block">
@@ -90,18 +90,18 @@ export default function Hero({ data }: { data?: HeroData | null }) {
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
           </span>
         </h1>
-        <p className="animate-slide-up-delayed mt-8 text-lg sm:text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+        <p className="animate-slide-up-delayed mt-6 sm:mt-8 text-base sm:text-lg md:text-xl lg:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed px-2">
           {d.subheading}
         </p>
-        <div className="animate-slide-up-more-delayed mt-12 flex flex-col sm:flex-row gap-4 justify-center">
-          <a href={d.ctaPrimaryLink} className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 bg-[var(--color-primary-light)] text-[var(--color-dark)] font-semibold rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary-light)]/25 transition-all duration-300 hover:-translate-y-0.5 text-lg overflow-hidden">
+        <div className="animate-slide-up-more-delayed mt-10 sm:mt-12 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2">
+          <a href={d.ctaPrimaryLink} className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[var(--color-primary-light)] text-[var(--color-dark)] font-semibold rounded-xl hover:shadow-lg hover:shadow-[var(--color-primary-light)]/25 transition-all duration-300 hover:-translate-y-0.5 text-base sm:text-lg overflow-hidden">
             <span className="relative z-10">{d.ctaPrimary}</span>
             <svg className="relative z-10 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </a>
-          <a href={d.ctaSecondaryLink} className="group relative inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-white/30 text-white font-semibold rounded-xl hover:border-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 text-lg">
+          <a href={d.ctaSecondaryLink} className="group relative inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 border-2 border-white/30 text-white font-semibold rounded-xl hover:border-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 text-base sm:text-lg">
             <span>{d.ctaSecondary}</span>
             <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

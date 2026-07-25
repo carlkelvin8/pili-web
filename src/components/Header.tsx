@@ -23,6 +23,7 @@ function CartIcon() {
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { itemCount } = useCart();
 
   const navLinks = [
     { label: "Home", href: "#hero" },
@@ -76,13 +77,18 @@ Pili AdheSeal
 
           {/* Mobile: cart + hamburger */}
           <div className="flex items-center gap-1 md:hidden">
-            <Link href="/products" className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <Link href="/products" className="relative p-2.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121 0 2.09-.773 2.34-1.872l1.836-8.046A1.125 1.125 0 0018.054 3H5.106m2.394 11.25l-1.5-6h13.5" />
               </svg>
+              {itemCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-[var(--color-accent)] text-white text-[9px] font-bold rounded-full flex items-center justify-center min-w-[18px] min-h-[18px]">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
             </Link>
             <button
-              className="p-2 rounded-md text-gray-700 hover:bg-gray-100"
+              className="p-2.5 rounded-md text-gray-700 hover:bg-gray-100 min-w-[44px] min-h-[44px] flex items-center justify-center"
               onClick={() => setMenuOpen(!menuOpen)}
               aria-expanded={menuOpen}
               aria-label="Toggle navigation menu"
@@ -106,7 +112,7 @@ Pili AdheSeal
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block py-3 px-2 text-sm font-medium text-gray-700 hover:text-[var(--color-accent)] hover:bg-gray-50 rounded"
+                  className="block py-3 px-4 text-sm font-medium text-gray-700 hover:text-[var(--color-accent)] hover:bg-gray-50 rounded min-h-[44px] flex items-center"
                   onClick={() => setMenuOpen(false)}
                 >
                   {link.label}
@@ -115,7 +121,7 @@ Pili AdheSeal
                 <a
                   key={link.href}
                   href={link.href}
-                  className="block py-3 px-2 text-sm font-medium text-gray-700 hover:text-[var(--color-accent)] hover:bg-gray-50 rounded"
+                  className="block py-3 px-4 text-sm font-medium text-gray-700 hover:text-[var(--color-accent)] hover:bg-gray-50 rounded min-h-[44px] flex items-center"
                   onClick={() => setMenuOpen(false)}
                 >
                   {link.label}

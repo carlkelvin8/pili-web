@@ -91,7 +91,7 @@ export default function Industries() {
             Industries We Serve
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--color-primary)]">
-            Industries We Serve
+            Tailored for Your Sector
           </h2>
           <p className="mt-4 text-lg text-gray-600">
             Engineered for Diverse Industries. Customized for Your Application.
@@ -101,7 +101,7 @@ export default function Industries() {
           </p>
         </div>
 
-        <div className="mt-16 grid md:grid-cols-2 lg:grid-cols-3 gap-8 stagger-children">
+        <div className="mt-12 md:mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 stagger-children">
           {industries.map((industry) => (
             <div
               key={industry.name}

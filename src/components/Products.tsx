@@ -46,7 +46,7 @@ export default function Products({ data }: { data?: ProductsData | null }) {
           </p>
         </div>
 
-        <div className="mt-16 space-y-20">
+        <div className="mt-12 md:mt-16 space-y-12 md:space-y-20">
           {d.items.map((product, index) => (
             <div
               key={product.name}
@@ -55,7 +55,7 @@ export default function Products({ data }: { data?: ProductsData | null }) {
               <div className="w-full lg:w-1/2">
                 <div className="relative group">
                   <div className="absolute -inset-4 bg-gradient-to-r from-[var(--color-primary-light)]/20 to-[var(--color-accent)]/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100" />
-                  <div className="relative bg-white rounded-2xl p-4 shadow-sm border border-gray-100 group-hover:shadow-xl transition-shadow duration-500">
+                  <div className="relative bg-white rounded-2xl p-2 sm:p-4 shadow-sm border border-gray-100 group-hover:shadow-xl transition-shadow duration-500">
                     <Image
                       src={product.image}
                       alt={product.name}
@@ -71,15 +71,15 @@ export default function Products({ data }: { data?: ProductsData | null }) {
                 <h3 className="text-2xl sm:text-3xl font-bold text-[var(--color-primary)]">
                   {product.name}
                 </h3>
-                <p className="mt-2 text-[var(--color-accent)] font-semibold text-lg">
+                <p className="mt-2 text-[var(--color-accent)] font-semibold text-base sm:text-lg">
                   {product.tagline}
                 </p>
-                <p className="mt-4 text-gray-600 text-lg leading-relaxed">
+                <p className="mt-4 text-gray-600 text-base sm:text-lg leading-relaxed">
                   {product.description}
                 </p>
                 <a
                   href="#contact"
-                  className="inline-flex items-center gap-2 mt-8 text-[var(--color-accent)] font-semibold hover:text-[var(--color-primary)] transition-colors group/link"
+                  className="inline-flex items-center gap-2 mt-6 sm:mt-8 py-2 text-[var(--color-accent)] font-semibold hover:text-[var(--color-primary)] transition-colors group/link min-h-[44px]"
                 >
                   Request Custom Formulation
                   <svg className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">

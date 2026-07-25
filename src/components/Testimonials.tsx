@@ -38,11 +38,11 @@ export default function Testimonials() {
           </p>
         </div>
 
-        <div className="mt-16 grid md:grid-cols-3 gap-8 stagger-children">
+        <div className="mt-12 md:mt-16 grid md:grid-cols-3 gap-6 md:gap-8 stagger-children">
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
+              className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col"
             >
               {/* Stars */}
               <div className="flex gap-1 mb-4">
