@@ -46,7 +46,7 @@ export default function Header() {
               className="w-11 h-11 md:w-12 md:h-12 object-contain"
             />
             <span className="text-lg md:text-xl font-bold text-[var(--color-primary)]">
-              Pili AdheSeal Inc.
+Pili AdheSeal
             </span>
           </a>
 
