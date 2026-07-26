@@ -349,9 +349,9 @@ function ProductModal({ product, onClose }: {
 
           {/* Extra info */}
           <div className="mt-8 pt-6 border-t border-[var(--color-primary)]/10 space-y-3 text-xs text-[var(--color-primary)]/50">
-            <p>Free shipping on orders over ₱5,000</p>
-            <p>Bulk discounts available for 50+ units</p>
-            <p>Custom formulation on request</p>
+            <p>📦 Free shipping on orders over ₱5,000</p>
+            <p>🔄 Bulk discounts available for 50+ units</p>
+            <p>🏭 Custom formulation on request</p>
           </div>
         </div>
       </div>
