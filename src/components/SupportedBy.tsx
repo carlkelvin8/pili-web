@@ -1,15 +1,13 @@
-import Image from "next/image";
-
 const supporters = [
-  { name: "DEP", logo: "/supporters/dep.png" },
-  { name: "DEVNIC", logo: "/supporters/devnic.png" },
-  { name: "PFAI", logo: "/supporters/pfai.png" },
-  { name: "POPH", logo: "/supporters/poph.png" },
-  { name: "DOST", logo: "/supporters/dost.png" },
-  { name: "DND", logo: "/supporters/dnd.png" },
-  { name: "GABAY", logo: "/supporters/gabay.png" },
-  { name: "K Asia Pacific", logo: "/supporters/k-asia-pacific.png" },
-  { name: "ChaseChem", logo: "/supporters/chasechem.png" },
+  "DOST",
+  "DND",
+  "DEP",
+  "POPH",
+  "DEVNIC",
+  "PFAI",
+  "GABAY",
+  "K Asia Pacific",
+  "ChaseChem",
 ];
 
 export default function SupportedBy() {
@@ -25,19 +23,15 @@ export default function SupportedBy() {
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-          {supporters.map((supporter) => (
+        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+          {supporters.map((name) => (
             <div
-              key={supporter.name}
-              className="group flex items-center justify-center w-28 h-20 sm:w-36 sm:h-24 grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-300"
+              key={name}
+              className="px-6 py-4 bg-white border border-[var(--color-primary)]/10 rounded-xl hover:border-[var(--color-accent)]/40 hover:shadow-md transition-all duration-300"
             >
-              <Image
-                src={supporter.logo}
-                alt={supporter.name}
-                width={120}
-                height={80}
-                className="object-contain w-full h-full p-2"
-              />
+              <span className="text-sm sm:text-base font-bold text-[var(--color-primary)] tracking-wide">
+                {name}
+              </span>
             </div>
           ))}
         </div>
