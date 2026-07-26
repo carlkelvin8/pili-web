@@ -1,13 +1,12 @@
 const supporters = [
-  "DOST",
-  "DND",
-  "DEP",
-  "POPH",
-  "DEVNIC",
-  "PFAI",
-  "GABAY",
-  "K Asia Pacific",
-  "ChaseChem",
+  { name: "DOST", logo: "/LOGOS/dost-logo.jpg" },
+  { name: "IPOPHL", logo: "/LOGOS/800px-IPOPHL_logo-300x224.png" },
+  { name: "DEPDEV", logo: "/LOGOS/DEPDEV_Logo.png" },
+  { name: "NIC", logo: "/LOGOS/NIC logo final w-white.png" },
+  { name: "PFA", logo: "/LOGOS/PFA Generic Logo (1).png" },
+  { name: "GA", logo: "/LOGOS/GA.jpg" },
+  { name: "BYK", logo: "/LOGOS/BYK.png" },
+  { name: "ChaseChem", logo: "/LOGOS/CHASECHEM.png" },
 ];
 
 export default function SupportedBy() {
@@ -23,15 +22,19 @@ export default function SupportedBy() {
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
-          {supporters.map((name) => (
+        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
+          {supporters.map((supporter) => (
             <div
-              key={name}
-              className="px-6 py-4 bg-white border border-[var(--color-primary)]/10 rounded-xl hover:border-[var(--color-accent)]/40 hover:shadow-md transition-all duration-300"
+              key={supporter.name}
+              className="flex items-center justify-center w-28 h-20 sm:w-36 sm:h-24 grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-300"
+              title={supporter.name}
             >
-              <span className="text-sm sm:text-base font-bold text-[var(--color-primary)] tracking-wide">
-                {name}
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={supporter.logo}
+                alt={supporter.name}
+                className="object-contain w-full h-full p-2"
+              />
             </div>
           ))}
         </div>
