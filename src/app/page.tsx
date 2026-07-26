@@ -7,6 +7,7 @@ import Industries from "@/components/Industries";
 import WhyChooseUs from "@/components/WhyChooseUs";
 
 import News from "@/components/News";
+import SupportedBy from "@/components/SupportedBy";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import CustomCursor from "@/components/CustomCursor";
@@ -32,6 +33,7 @@ export default async function Home() {
       <WhyChooseUs />
 
       <News data={cms.news} />
+      <SupportedBy />
       <Contact data={cms.contact} />
       <Footer data={cms.footer} />
       <FloatingChat />

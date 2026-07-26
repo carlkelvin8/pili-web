@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCart } from "@/lib/cart-context";
 
 interface Product {
   id: string;
@@ -32,7 +31,6 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export default function ProductsPage() {
-  const { addItem, itemCount } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -40,8 +38,6 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [categories, setCategories] = useState<string[]>([]);
-  const [addedId, setAddedId] = useState<string | null>(null);
-  const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [visibleCount, setVisibleCount] = useState(12);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -87,12 +83,6 @@ export default function ProductsPage() {
     return sorted;
   }, [products, sortBy]);
 
-  const addToCart = useCallback((product: Product, qty = 1) => {
-    addItem({ productId: product.id, name: product.name, sku: product.sku, price: product.price, image: product.image || undefined }, qty);
-    setAddedId(product.id);
-    setTimeout(() => setAddedId(null), 1800);
-  }, [addItem]);
-
   const visibleProducts = sortedProducts.slice(0, visibleCount);
 
   return (
@@ -131,16 +121,6 @@ export default function ProductsPage() {
 
             {/* Right icons */}
             <div className="flex items-center gap-4">
-              <button onClick={() => setCartOpen(true)} className="relative p-1.5 text-[var(--color-dark)] hover:text-[var(--color-accent)] transition-colors" aria-label="Cart">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-[var(--color-accent)] text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {itemCount}
-                  </span>
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -253,7 +233,7 @@ export default function ProductsPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-10">
               {visibleProducts.map((product) => (
-                <ProductCard key={product.id} product={product} onAdd={addToCart} addedId={addedId} onQuickView={setSelectedProduct} />
+                <ProductCard key={product.id} product={product} onQuickView={setSelectedProduct} />
               ))}
             </div>
             {visibleCount < sortedProducts.length && (
@@ -273,11 +253,8 @@ export default function ProductsPage() {
 
       {/* ── Product Modal ── */}
       {selectedProduct && (
-        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} onAdd={addToCart} addedId={addedId} />
+        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
-
-      {/* ── Cart Drawer ── */}
-      {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   );
 }
@@ -285,14 +262,11 @@ export default function ProductsPage() {
 /* ═══════════════════════════════════════════════════════════════
    PRODUCT CARD
    ═══════════════════════════════════════════════════════════════ */
-function ProductCard({ product, onAdd, addedId, onQuickView }: {
+function ProductCard({ product, onQuickView }: {
   product: Product;
-  onAdd: (p: Product) => void;
-  addedId: string | null;
   onQuickView: (p: Product) => void;
 }) {
   const isOut = product.stock === 0;
-  const isAdded = addedId === product.id;
   const isLow = product.stock > 0 && product.stock <= 5;
 
   return (
@@ -310,23 +284,7 @@ function ProductCard({ product, onAdd, addedId, onQuickView }: {
           </div>
         )}
 
-        {/* Add to cart button (top-right) */}
-        <button onClick={(e) => { e.stopPropagation(); onAdd(product); }} disabled={isOut}
-          className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 ${
-            isAdded ? "bg-[var(--color-accent)] text-white shadow-md" :
-            "bg-white/90 text-[var(--color-primary)] hover:bg-[var(--color-accent)] hover:text-white hover:shadow-md backdrop-blur-sm border border-[var(--color-primary)]/10"
-          } ${isOut ? "opacity-40 cursor-not-allowed" : ""}`}
-          aria-label="Add to cart">
-          {isAdded ? (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-            </svg>
-          )}
-        </button>
+
 
         {/* Badges (bottom-left) */}
         <div className="absolute bottom-4 left-4 flex flex-col gap-1.5">
@@ -365,15 +323,11 @@ function ProductCard({ product, onAdd, addedId, onQuickView }: {
 /* ═══════════════════════════════════════════════════════════════
    PRODUCT MODAL
    ═══════════════════════════════════════════════════════════════ */
-function ProductModal({ product, onClose, onAdd, addedId }: {
+function ProductModal({ product, onClose }: {
   product: Product;
   onClose: () => void;
-  onAdd: (p: Product, qty?: number) => void;
-  addedId: string | null;
 }) {
-  const [qty, setQty] = useState(1);
   const isOut = product.stock === 0;
-  const isAdded = addedId === product.id;
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -429,30 +383,6 @@ function ProductModal({ product, onClose, onAdd, addedId }: {
             </span>
           </div>
 
-          {/* Quantity */}
-          {!isOut && (
-            <div className="mt-8">
-              <label className="text-xs font-medium text-[var(--color-primary)]/50 uppercase tracking-wide">Quantity</label>
-              <div className="flex items-center border border-[var(--color-primary)]/15 mt-2 w-fit">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="w-10 h-10 flex items-center justify-center text-[var(--color-primary)]/60 hover:bg-[var(--color-light)] transition-colors text-lg">−</button>
-                <span className="w-10 h-10 flex items-center justify-center text-sm font-medium border-x border-[var(--color-primary)]/15">{qty}</span>
-                <button onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                  className="w-10 h-10 flex items-center justify-center text-[var(--color-primary)]/60 hover:bg-[var(--color-light)] transition-colors text-lg">+</button>
-              </div>
-            </div>
-          )}
-
-          {/* Add to cart */}
-          <button onClick={() => { onAdd(product, qty); setQty(1); }} disabled={isOut}
-            className={`w-full mt-8 py-4 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-              isAdded ? "bg-[var(--color-accent)] text-white" :
-              isOut ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)]/40 cursor-not-allowed" :
-              "bg-[var(--color-dark)] text-white hover:bg-[var(--color-accent)]"
-            }`}>
-            {isAdded ? "✓ ADDED TO CART" : isOut ? "OUT OF STOCK" : `ADD TO CART — ${formatCurrency(product.price * qty)}`}
-          </button>
-
           {/* Extra info */}
           <div className="mt-8 pt-6 border-t border-[var(--color-primary)]/10 space-y-3 text-xs text-[var(--color-primary)]/50">
             <p>📦 Free shipping on orders over ₱5,000</p>
@@ -465,94 +395,4 @@ function ProductModal({ product, onClose, onAdd, addedId }: {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CART DRAWER
-   ═══════════════════════════════════════════════════════════════ */
-function CartDrawer({ onClose }: { onClose: () => void }) {
-  const { items, removeItem, updateQuantity, total, itemCount } = useCart();
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-[var(--color-dark)]/30 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-[var(--color-primary)]/10 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-[var(--color-dark)]">Cart</h2>
-            <p className="text-xs text-[var(--color-primary)]/40 mt-0.5">{itemCount} item{itemCount !== 1 ? "s" : ""}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-[var(--color-light)] transition-colors">
-            <svg className="w-5 h-5 text-[var(--color-primary)]/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {items.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-[var(--color-primary)]/60 font-medium">Your cart is empty</p>
-              <button onClick={onClose} className="mt-4 text-sm text-[var(--color-accent)] hover:underline">
-                Continue Shopping
-              </button>
-            </div>
-          ) : items.map((item) => (
-            <div key={item.productId} className="flex gap-4 pb-4 border-b border-[var(--color-primary)]/10 last:border-0">
-              <div className="w-16 h-20 bg-[var(--color-light)] border border-[var(--color-primary)]/10 flex items-center justify-center shrink-0 overflow-hidden">
-                {item.image ? (
-                  <Image src={item.image} alt={item.name} width={56} height={70} className="w-full h-full object-contain p-1" />
-                ) : (
-                  <svg className="w-6 h-6 text-[var(--color-primary)]/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622" />
-                  </svg>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[var(--color-dark)] truncate">{item.name}</p>
-                <p className="text-[10px] text-[var(--color-primary)]/40 font-mono mt-0.5">{item.sku}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center border border-[var(--color-primary)]/15">
-                    <button onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="w-7 h-7 flex items-center justify-center text-[var(--color-primary)]/60 hover:bg-[var(--color-light)] text-xs">−</button>
-                    <span className="w-7 h-7 flex items-center justify-center text-xs font-medium border-x border-[var(--color-primary)]/15">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      className="w-7 h-7 flex items-center justify-center text-[var(--color-primary)]/60 hover:bg-[var(--color-light)] text-xs">+</button>
-                  </div>
-                  <p className="text-sm font-semibold text-[var(--color-dark)]">{formatCurrency(item.price * item.quantity)}</p>
-                </div>
-              </div>
-              <button onClick={() => removeItem(item.productId)}
-                className="self-start p-1 text-[var(--color-primary)]/30 hover:text-red-500 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        {items.length > 0 && (
-          <div className="p-6 border-t border-[var(--color-primary)]/10 space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-[var(--color-primary)]/60">Subtotal</span>
-              <span className="font-bold text-[var(--color-dark)]">{formatCurrency(total)}</span>
-            </div>
-            <p className="text-[10px] text-[var(--color-primary)]/40">Shipping and taxes calculated at checkout</p>
-            <Link href="/checkout" onClick={onClose}
-              className="block w-full py-4 text-center text-sm font-bold uppercase tracking-wider text-white bg-[var(--color-dark)] hover:bg-[var(--color-accent)] transition-colors">
-              Checkout
-            </Link>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
