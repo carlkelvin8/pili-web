@@ -28,6 +28,14 @@ function getYouTubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
+
 export default function News({ data }: { data?: NewsData | null }) {
   const d = {
     heading: "News",
@@ -77,10 +85,16 @@ export default function News({ data }: { data?: NewsData | null }) {
                       </div>
                     </>
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]">
-                      <svg className="w-10 h-10 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6V7.5z" />
-                      </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)]">
+                      {/* Site favicon/logo */}
+                      <Image
+                        src={`https://www.google.com/s2/favicons?domain=${getDomain(item.url)}&sz=128`}
+                        alt={getDomain(item.url)}
+                        width={64}
+                        height={64}
+                        className="rounded-lg shadow-lg mb-3 bg-white p-2"
+                      />
+                      <span className="text-white/70 text-xs font-medium">{getDomain(item.url)}</span>
                     </div>
                   )}
                 </div>

@@ -5,6 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 type CmsData = Record<string, unknown>;
+type ContentStatus = "DRAFT" | "PUBLISHED";
+
+interface SectionState {
+  content: CmsData;
+  status: ContentStatus;
+  publishedAt: string | null;
+}
 
 function validateSection(section: string, data: CmsData): string {
   switch (section) {
@@ -507,12 +514,17 @@ export default function CmsPage() {
   const [activeTab, setActiveTab] = useState<string>("hero");
   const [content, setContent] = useState<Record<string, CmsData>>({});
   const [savedContent, setSavedContent] = useState<Record<string, CmsData>>({});
+  const [sectionStates, setSectionStates] = useState<Record<string, SectionState>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [authorized, setAuthorized] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("Changes saved successfully!");
+  const [previewMode, setPreviewMode] = useState(false);
+  const [togglingPreview, setTogglingPreview] = useState(false);
   const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -521,13 +533,19 @@ export default function CmsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
-      const res = await fetch("/api/cms");
+      // Fetch ALL sections including drafts for the admin
+      const res = await fetch("/api/cms?preview=true");
       if (res.ok) {
         const records = await res.json();
         const map: Record<string, CmsData> = {};
-        for (const r of records) map[r.section] = r.content;
+        const states: Record<string, SectionState> = {};
+        for (const r of records) {
+          map[r.section] = r.content;
+          states[r.section] = { content: r.content, status: r.status ?? "DRAFT", publishedAt: r.publishedAt ?? null };
+        }
         setContent(map);
         setSavedContent(JSON.parse(JSON.stringify(map)));
+        setSectionStates(states);
       }
       setAuthorized(true);
       setLoading(false);
@@ -542,6 +560,13 @@ export default function CmsPage() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
+
+  const showToast = useCallback((msg: string) => {
+    setSuccessMessage(msg);
+    setShowSuccessToast(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setShowSuccessToast(false), 3000);
+  }, []);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -560,11 +585,14 @@ export default function CmsPage() {
         body: JSON.stringify({ section: activeTab, content: d }),
       });
       if (res.ok) {
+        const saved = await res.json();
         setSavedContent((prev) => ({ ...prev, [activeTab]: JSON.parse(JSON.stringify(d)) }));
+        setSectionStates((prev) => ({
+          ...prev,
+          [activeTab]: { content: d, status: saved.status ?? "DRAFT", publishedAt: saved.publishedAt ?? null },
+        }));
         setLastSaved(new Date());
-        setShowSuccessToast(true);
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => setShowSuccessToast(false), 3000);
+        showToast("Draft saved successfully!");
         setMessage("");
       } else {
         const err = await res.json();
@@ -574,7 +602,88 @@ export default function CmsPage() {
       setMessage("Unable to connect. Please check your internet and try again.");
     }
     setSaving(false);
-  }, [activeTab, content]);
+  }, [activeTab, content, showToast]);
+
+  const handlePublish = useCallback(async (action: "publish" | "unpublish") => {
+    // Save first if there are unsaved changes
+    const sectionDirty = JSON.stringify(content[activeTab]) !== JSON.stringify(savedContent[activeTab]);
+    if (sectionDirty && action === "publish") {
+      const d = content[activeTab] || {};
+      const validationError = validateSection(activeTab, d);
+      if (validationError) {
+        setMessage(validationError);
+        return;
+      }
+      // Save draft first
+      setSaving(true);
+      try {
+        const saveRes = await fetch("/api/cms", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ section: activeTab, content: d }),
+        });
+        if (!saveRes.ok) {
+          const err = await saveRes.json();
+          setMessage(err.error || "Couldn't save before publishing. Please try again.");
+          setSaving(false);
+          return;
+        }
+        setSavedContent((prev) => ({ ...prev, [activeTab]: JSON.parse(JSON.stringify(d)) }));
+      } catch {
+        setMessage("Unable to connect. Please check your internet and try again.");
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
+
+    setPublishing(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/cms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: activeTab, action }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSectionStates((prev) => ({
+          ...prev,
+          [activeTab]: { ...prev[activeTab], status: updated.status, publishedAt: updated.publishedAt ?? null },
+        }));
+        showToast(action === "publish" ? "Section published to live site!" : "Section unpublished — now in draft.");
+      } else {
+        const err = await res.json();
+        setMessage(err.error || "Couldn't update publish status. Please try again.");
+      }
+    } catch {
+      setMessage("Unable to connect. Please check your internet and try again.");
+    }
+    setPublishing(false);
+  }, [activeTab, content, savedContent, showToast]);
+
+  const handleTogglePreview = useCallback(async () => {
+    setTogglingPreview(true);
+    try {
+      const next = !previewMode;
+      const res = await fetch("/api/cms/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enable: next }),
+      });
+      if (res.ok) {
+        setPreviewMode(next);
+        // Open preview in new tab
+        if (next) {
+          window.open("/", "_blank");
+        }
+        showToast(next ? "Preview mode ON — site now shows drafts." : "Preview mode OFF.");
+      }
+    } catch {
+      // silently fail
+    }
+    setTogglingPreview(false);
+  }, [previewMode, showToast]);
 
   if (loading || !authorized) {
     return (
@@ -590,6 +699,8 @@ export default function CmsPage() {
   const Editor = SECTION_EDITORS[activeTab];
   const meta = SECTIONS_META[activeTab];
   const sectionDirty = JSON.stringify(content[activeTab]) !== JSON.stringify(savedContent[activeTab]);
+  const currentStatus: ContentStatus = sectionStates[activeTab]?.status ?? "DRAFT";
+  const publishedAt = sectionStates[activeTab]?.publishedAt;
 
   return (
     <div className="flex h-[calc(100vh-49px)]">
@@ -597,7 +708,16 @@ export default function CmsPage() {
       {showSuccessToast && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg animate-in slide-in-from-top-5">
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span className="text-sm font-medium">Changes saved successfully!</span>
+          <span className="text-sm font-medium">{successMessage}</span>
+        </div>
+      )}
+
+      {/* Preview Mode Banner */}
+      {previewMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-xs font-semibold text-center py-1.5 flex items-center justify-center gap-2">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          Preview Mode Active — drafts are visible on the live site
+          <button onClick={handleTogglePreview} className="ml-3 underline hover:no-underline">Exit Preview</button>
         </div>
       )}
 
@@ -612,6 +732,7 @@ export default function CmsPage() {
             const m = SECTIONS_META[s];
             const isActive = activeTab === s;
             const dirty = JSON.stringify(content[s]) !== JSON.stringify(savedContent[s]);
+            const status: ContentStatus = sectionStates[s]?.status ?? "DRAFT";
             return (
               <button
                 key={s}
@@ -629,7 +750,22 @@ export default function CmsPage() {
                       <span className={`text-sm font-semibold ${isActive ? "text-white" : "text-[#0a2e2e]"}`}>{m.label}</span>
                       {dirty && <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0" title="Unsaved changes" />}
                     </div>
-                    <p className={`text-[10px] mt-0.5 truncate ${isActive ? "text-white/60" : "text-gray-400"}`}>{m.description}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`text-[10px] truncate ${isActive ? "text-white/60" : "text-gray-400"}`}>{m.description}</span>
+                    </div>
+                    <div className="mt-1">
+                      {status === "PUBLISHED" ? (
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? "bg-green-500/30 text-green-200" : "bg-green-100 text-green-700"}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                          Published
+                        </span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20 text-white/70" : "bg-gray-100 text-gray-500"}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+                          Draft
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </button>
@@ -648,26 +784,74 @@ export default function CmsPage() {
               {meta.label}
               {sectionDirty && <span className="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">Unsaved</span>}
             </h1>
-            <p className="text-xs text-gray-400 mt-0.5">{meta.description}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-gray-400">{meta.description}</p>
+              {publishedAt && currentStatus === "PUBLISHED" && (
+                <span className="text-[10px] text-gray-400">
+                  · Published {new Date(publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {lastSaved && (
               <span className="text-[11px] text-gray-400">
-                Last saved {lastSaved.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                Saved {lastSaved.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
               </span>
             )}
-            <a href="/" target="_blank" className="text-xs text-gray-500 hover:text-[#3ecbac] border border-gray-200 px-3 py-1.5 rounded-lg transition-colors">
-              Preview
-            </a>
+
+            {/* Preview Mode Toggle */}
+            <button
+              onClick={handleTogglePreview}
+              disabled={togglingPreview}
+              title={previewMode ? "Exit preview mode" : "Enter preview mode — see all drafts on site"}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                previewMode
+                  ? "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  : "border-gray-200 text-gray-500 hover:text-[#3ecbac] hover:border-[#3ecbac]"
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              {previewMode ? "Exit Preview" : "Preview"}
+            </button>
+
+            {/* Save Draft Button */}
             <button
               onClick={handleSave}
               disabled={saving || !sectionDirty}
-              className="bg-[#0d4d4d] hover:bg-[#1a8a6e] text-white px-5 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+              className="border border-gray-200 text-gray-600 hover:text-[#0d4d4d] hover:border-gray-300 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving ? (
                 <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Saving...</>
-              ) : "Save Changes"}
+              ) : "Save Draft"}
             </button>
+
+            {/* Publish / Unpublish Button */}
+            {currentStatus === "PUBLISHED" ? (
+              <button
+                onClick={() => handlePublish("unpublish")}
+                disabled={publishing}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {publishing ? (
+                  <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Unpublishing...</>
+                ) : (
+                  <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg> Unpublish</>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={() => handlePublish("publish")}
+                disabled={publishing || saving}
+                className="bg-[#0d4d4d] hover:bg-[#1a8a6e] text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+              >
+                {publishing ? (
+                  <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg> Publishing...</>
+                ) : (
+                  <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg> Publish</>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
