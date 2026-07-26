@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import Header from "@/components/Header";
 
 interface Product {
   id: string;
@@ -87,44 +88,7 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-light)]">
-      {/* ── Top Navigation ── */}
-      <header className="bg-[var(--color-light)] border-b border-[var(--color-primary)]/10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left nav */}
-            <nav className="hidden sm:flex items-center gap-8">
-              <Link href="/" className="text-sm font-medium text-[var(--color-dark)] hover:text-[var(--color-accent)] transition-colors">
-                HOME
-              </Link>
-              <Link href="/products" className="text-sm font-medium text-[var(--color-dark)] hover:text-[var(--color-accent)] transition-colors">
-                PRODUCTS
-              </Link>
-              <Link href="/#about" className="text-sm font-medium text-[var(--color-dark)] hover:text-[var(--color-accent)] transition-colors">
-                ABOUT
-              </Link>
-              <Link href="/#contact" className="text-sm font-medium text-[var(--color-accent)]">
-                CONTACT
-              </Link>
-            </nav>
-            {/* Mobile back */}
-            <Link href="/" className="sm:hidden flex items-center gap-2 text-sm font-medium text-[var(--color-dark)]">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
-              Home
-            </Link>
-
-            {/* Center logo */}
-            <Link href="/" className="absolute left-1/2 -translate-x-1/2 text-2xl font-bold tracking-tight text-[var(--color-dark)] font-[family-name:var(--font-poppins)]">
-              PILI
-            </Link>
-
-            {/* Right icons */}
-            <div className="flex items-center gap-4">
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* ── Breadcrumb ── */}
       <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-6">
@@ -385,9 +349,9 @@ function ProductModal({ product, onClose }: {
 
           {/* Extra info */}
           <div className="mt-8 pt-6 border-t border-[var(--color-primary)]/10 space-y-3 text-xs text-[var(--color-primary)]/50">
-            <p>📦 Free shipping on orders over ₱5,000</p>
-            <p>🔄 Bulk discounts available for 50+ units</p>
-            <p>🏭 Custom formulation on request</p>
+            <p>Free shipping on orders over ₱5,000</p>
+            <p>Bulk discounts available for 50+ units</p>
+            <p>Custom formulation on request</p>
           </div>
         </div>
       </div>
