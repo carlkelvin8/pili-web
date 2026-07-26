@@ -113,9 +113,6 @@ export default function Industries() {
               <h3 className="mt-4 text-lg font-bold text-[var(--color-primary)]">
                 {industry.name}
               </h3>
-              <p className="mt-2 text-gray-600 text-sm leading-relaxed">
-                {industry.description}
-              </p>
             </div>
           ))}
         </div>
